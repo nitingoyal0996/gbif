@@ -38,20 +38,11 @@ def setup_logger() -> logging.Logger:
         return _logger_instance
 
     with _logger_lock:
-        if _logger_instance is not None:
-            return _logger_instance
-
         try:
-            # Ensure log directory exists
             Path(LogConfig.LOG_DIR).mkdir(parents=True, exist_ok=True)
-
             logger = logging.getLogger("gbif.agent")
             logger.setLevel(getattr(logging, LogConfig.LOG_LEVEL))
-
-            # Remove existing handlers to prevent duplicates
             logger.handlers.clear()
-
-            # Create file handler with rotation
             handler = TimedRotatingFileHandler(
                 LogConfig.LOG_FILE,
                 when="midnight",
@@ -60,26 +51,18 @@ def setup_logger() -> logging.Logger:
                 utc=True,
                 encoding="utf-8",
             )
-
-            # Set formatter
             formatter = logging.Formatter(
                 fmt=LogConfig.LOG_FORMAT, datefmt=LogConfig.DATE_FORMAT
             )
             handler.setFormatter(formatter)
-
-            # Add handler to logger
             logger.addHandler(handler)
-
-            # Prevent propagation to root logger
             logger.propagate = False
-
             _logger_instance = logger
-            logger.info("GBIF Agent logging system initialized")
-
+            logger.info("GBIF Agent logging system initialized (PID: %d)", os.getpid())
             return logger
 
         except Exception as e:
-            # Fallback to console logging if file logging fails
+            # Fallback to console logging
             fallback_logger = logging.getLogger("gbif.agent.fallback")
             fallback_logger.setLevel(logging.WARNING)
 
@@ -140,7 +123,6 @@ async def log_process_event(event: str, **kwargs) -> None:
         **kwargs: Event data
     """
     try:
-        # Format message with all data
         if kwargs:
             details = " | ".join(f"{k}={v}" for k, v in kwargs.items())
             msg = f"{event} | {details}"
@@ -151,6 +133,35 @@ async def log_process_event(event: str, **kwargs) -> None:
 
     except Exception as e:
         logger.error(f"Failed to log event '{event}': {e}")
+
+
+def log_exception(error: Exception, context: str = "") -> None:
+    """
+    Log exception with structured information
+
+    Args:
+        error: The exception to log
+        context: Additional context about where the error occurred
+    """
+    try:
+        # Import here to avoid circular imports
+        from src.exceptions import GBIFAgentError
+
+        if isinstance(error, GBIFAgentError):
+            error_data = error.to_dict()
+            error_msg = f"GBIF_ERROR | {context} | " + " | ".join(
+                f"{k}={v}" for k, v in error_data.items() if v is not None
+            )
+            logger.error(error_msg)
+        else:
+            logger.error(
+                f"EXCEPTION | {context} | Type={type(error).__name__} | Message={str(error)}"
+            )
+
+    except Exception as log_error:
+        logger.error(
+            f"Failed to log exception: {log_error} | Original error: {str(error)}"
+        )
 
 
 @asynccontextmanager
@@ -180,7 +191,6 @@ async def wrap_process(process: IChatBioAgentProcess):
     async def safe_create_artifact_wrapper(*args, **kwargs):
         """Safely wrap process.create_artifact with error handling"""
         try:
-            # Filter kwargs for logging (remove sensitive data)
             log_kwargs = {k: v for k, v in kwargs.items() if k != "api_response"}
             await log_process_event(
                 "process.create_artifact", args=args, kwargs=log_kwargs
@@ -304,8 +314,10 @@ def with_logging(entrypoint_id: str):
                 return result
 
             except Exception as e:
-                # Log error with details
                 duration = (datetime.now(timezone.utc) - start_time).total_seconds()
+                log_exception(
+                    e, f"Entrypoint={entrypoint_id} | Duration={duration:.3f}s"
+                )
                 logger.error(
                     f"ERROR | Entrypoint={entrypoint_id} | Duration={duration:.3f}s | Error={type(e).__name__}: {str(e)}"
                 )

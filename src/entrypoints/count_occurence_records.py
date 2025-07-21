@@ -4,7 +4,7 @@ GBIF Count Occurrence Records Entrypoint
 This entrypoint counts occurrence records and provides faceted statistics using the GBIF occurrences API.
 Parameters are provided by the upstream service - no LLM generation needed.
 """
-
+import uuid
 from ichatbio.agent_response import ResponseContext, IChatBioAgentProcess
 from ichatbio.types import AgentEntrypoint
 
@@ -38,27 +38,30 @@ async def run(context: ResponseContext, request: str, params: GBIFOccurrenceFace
     Executes the occurrence counting entrypoint. Counts occurrence records using the provided
     parameters and creates an artifact with the faceted results.
     """
+    # Generate a unique agent log ID for this run for logging purposes
+    AGENT_LOG_ID = f"COUNT_OCCURRENCE_RECORDS_{str(uuid.uuid4())[:6]}"
+
     async with context.begin_process("Counting GBIF occurrence records with facets") as process:
         process: IChatBioAgentProcess
-        
+        await process.log(f"Agent log ID: {AGENT_LOG_ID}")
+        await process.log(
+            "Search and facet parameters", data=params.model_dump(exclude_defaults=True)
+        )
+
         gbif = GbifApi()
-        
-        await process.log("Extracted search and facet parameters", data=params.model_dump(exclude_defaults=True))
-        
-        # Build the API URL
         api_url = gbif.build_occurrence_facets_url(params)
         await process.log(f"Constructed API URL: {api_url}")
-        
+
         try:
             await process.log("Querying GBIF for occurrence statistics...")
             raw_response = await gbif.execute_request(api_url)
-            
+
             total = raw_response.get('count', 0)
             facets = raw_response.get('facets', [])
-            
-            await process.log(f"Query successful, found {total} records with {len(facets)} facet groups.")
-            
-            # Create artifact with the results
+
+            await process.log(
+                f"Query successful, found {total} records with {len(facets)} facet groups."
+            )
             await process.create_artifact(
                 mimetype="application/json",
                 description=f"Raw JSON for GBIF occurrence statistics with {len(facets)} facet groups",
@@ -67,20 +70,26 @@ async def run(context: ResponseContext, request: str, params: GBIFOccurrenceFace
                     "data_source": "GBIF",
                     "total_matches": total,
                     "facet_groups": len(facets),
-                    "facet_fields": [facet.get('field', 'unknown') for facet in facets],
-                    "portal_url": gbif.build_portal_url(api_url)
-                }
+                    "facet_fields": [facet.get("field", "unknown") for facet in facets],
+                    "portal_url": gbif.build_portal_url(api_url),
+                },
             )
-            
-            # Reply to the assistant with a summary
+
             summary = f"I have successfully counted occurrences and found {total} matching records. "
             if facets:
                 facet_summary = ", ".join([f"{facet.get('field', 'unknown')} ({len(facet.get('counts', []))} values)" for facet in facets])
                 summary += f"The results are broken down by: {facet_summary}. "
             summary += f"The results can be viewed in the GBIF portal at {gbif.build_portal_url(api_url)}."
-            
+
             await context.reply(summary)
-            
+
         except Exception as e:
-            await process.log("Error during API request", data={"error": str(e)})
+            await process.log(
+                "Error during API request",
+                data={
+                    "error": str(e),
+                    "agent_log_id": AGENT_LOG_ID,
+                    "api_url": api_url,
+                },
+            )
             await context.reply(f"I encountered an error while trying to count occurrences: {str(e)}")
