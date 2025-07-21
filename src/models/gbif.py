@@ -20,11 +20,14 @@ from uuid import UUID
 
 class ProductionBaseModel(BaseModel):
     """A base model with production-ready settings."""
-
+    
     model_config = ConfigDict(
         frozen=True,  # Models are immutable
         extra="forbid",  # Forbid extra fields not in the model
+        validate_assignment=True,  # Validate when values are assigned
+        from_attributes=True,  # Allow loading from objects with attributes
         populate_by_name=True,  # Allow population by field name OR alias
+        validate_default=True,  # Validate default values
     )
 
 
@@ -49,6 +52,8 @@ class BasisOfRecordEnum(str, Enum):
     OCCURRENCE = "OCCURRENCE"
     UNKNOWN = "UNKNOWN"
 
+    def __str__(self):
+        return self.value
 
 class ContinentEnum(str, Enum):
     """
@@ -65,6 +70,9 @@ class ContinentEnum(str, Enum):
     NORTH_AMERICA = "NORTH_AMERICA"
     SOUTH_AMERICA = "SOUTH_AMERICA"
 
+    def __str__(self):
+        return self.value
+
 
 class OccurrenceStatusEnum(str, Enum):
     """
@@ -75,6 +83,9 @@ class OccurrenceStatusEnum(str, Enum):
     PRESENT = "PRESENT"
     ABSENT = "ABSENT"
 
+    def __str__(self):
+        return self.value
+
 
 class LicenseEnum(str, Enum):
     """A legal document giving official permission to do something with the occurrence."""
@@ -84,6 +95,9 @@ class LicenseEnum(str, Enum):
     CC_BY_NC_4_0 = "CC_BY_NC_4_0"
     UNSPECIFIED = "UNSPECIFIED"
     UNSUPPORTED = "UNSUPPORTED"
+
+    def __str__(self):
+        return self.value
 
 
 class ProtocolEnum(str, Enum):
@@ -110,6 +124,9 @@ class ProtocolEnum(str, Enum):
     TEXT_TREE = "TEXT_TREE"
     OTHER = "OTHER"
 
+    def __str__(self):
+        return self.value
+
 
 class AgentIdentifierTypeEnum(str, Enum):
     """Type of agent identifier."""
@@ -117,6 +134,9 @@ class AgentIdentifierTypeEnum(str, Enum):
     ORCID = "ORCID"
     WIKIDATA = "WIKIDATA"
     OTHER = "OTHER"
+
+    def __str__(self):
+        return self.value
 
 
 class IdentifierTypeEnum(str, Enum):
@@ -145,6 +165,9 @@ class IdentifierTypeEnum(str, Enum):
     ISIL = "ISIL"
     CLB_DATASET_KEY = "CLB_DATASET_KEY"
 
+    def __str__(self):
+        return self.value
+
 
 class MediaObjectTypeEnum(str, Enum):
     """The kind of media object."""
@@ -153,6 +176,9 @@ class MediaObjectTypeEnum(str, Enum):
     MovingImage = "MovingImage"
     Sound = "Sound"
     InteractiveResource = "InteractiveResource"
+
+    def __str__(self):
+        return self.value
 
 
 class TaxonRankEnum(str, Enum):
@@ -234,6 +260,8 @@ class TaxonRankEnum(str, Enum):
     OTHER = "OTHER"
     UNRANKED = "UNRANKED"
 
+    def __str__(self):
+        return self.value
 
 class TaxonomicStatusEnum(str, Enum):
     """The status of the use of the scientificName as a label for a taxon."""
@@ -247,6 +275,9 @@ class TaxonomicStatusEnum(str, Enum):
     MISAPPLIED = "MISAPPLIED"
     AMBIGUOUS_SYNONYM = "AMBIGUOUS_SYNONYM"
     PROVISIONALLY_ACCEPTED = "PROVISIONALLY_ACCEPTED"
+
+    def __str__(self):
+        return self.value
 
 
 class GBIFRegionEnum(str, Enum):
@@ -262,6 +293,9 @@ class GBIFRegionEnum(str, Enum):
     OCEANIA = "OCEANIA"
     LATIN_AMERICA = "LATIN_AMERICA"
     ANTARCTICA = "ANTARCTICA"
+
+    def __str__(self):
+        return self.value
 
 
 # --- Predicate Model Definitions ---

@@ -1,200 +1,184 @@
-"""
-Essential Pydantic models for GBIF API entrypoints.
-"""
-
-from enum import Enum
-from typing import List, Optional, Union
+from typing import List, Optional
 from uuid import UUID
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+# Import enums and models from gbif.py
+from .gbif import (
+    BasisOfRecordEnum,
+    ContinentEnum,
+    OccurrenceStatusEnum,
+    LicenseEnum,
+    MediaObjectTypeEnum,
+    ProductionBaseModel,
+)
 
 
-class BasisOfRecord(str, Enum):
-    PRESERVED_SPECIMEN = "PRESERVED_SPECIMEN"
-    FOSSIL_SPECIMEN = "FOSSIL_SPECIMEN"
-    LIVING_SPECIMEN = "LIVING_SPECIMEN"
-    OBSERVATION = "OBSERVATION"
-    HUMAN_OBSERVATION = "HUMAN_OBSERVATION"
-    MACHINE_OBSERVATION = "MACHINE_OBSERVATION"
-    MATERIAL_SAMPLE = "MATERIAL_SAMPLE"
-    LITERATURE = "LITERATURE"
-    MATERIAL_CITATION = "MATERIAL_CITATION"
-    OCCURRENCE = "OCCURRENCE"
-    UNKNOWN = "UNKNOWN"
-
-
-class Continent(str, Enum):
-    AFRICA = "AFRICA"
-    ANTARCTICA = "ANTARCTICA"
-    ASIA = "ASIA"
-    OCEANIA = "OCEANIA"
-    EUROPE = "EUROPE"
-    NORTH_AMERICA = "NORTH_AMERICA"
-    SOUTH_AMERICA = "SOUTH_AMERICA"
-
-
-class OccurrenceStatus(str, Enum):
-    PRESENT = "PRESENT"
-    ABSENT = "ABSENT"
-
-
-class License(str, Enum):
-    CC0_1_0 = "CC0_1_0"
-    CC_BY_4_0 = "CC_BY_4_0"
-    CC_BY_NC_4_0 = "CC_BY_NC_4_0"
-    UNSPECIFIED = "UNSPECIFIED"
-    UNSUPPORTED = "UNSUPPORTED"
-
-
-class GBIFOccurrenceSearchParams(BaseModel):
-    """Parameters for GBIF occurrence search - matches API structure with user-friendly interface."""
+class GBIFOccurrenceBaseParams(ProductionBaseModel):
+    """Base parameters for GBIF occurrence operations - contains all common search and filter parameters"""
     
     # Core search parameters
-    q: Optional[str] = Field(None, 
-        description="Full-text search parameter (common name, scientific name, etc.)",
-        examples=["Quercus robur", "oak", "human observation"]
-    )
-    
     scientificName: Optional[List[str]] = Field(None, 
-        description="Scientific names from the GBIF backbone",
-        examples=[["Quercus robur"], ["Homo sapiens", "Canis lupus"]]
+        description="A scientific name from the GBIF backbone or the specified checklist. All included and synonym taxa are included in the search. Under the hood a call to the species match service is done first to retrieve a taxonKey. Only unique scientific names will return results, homonyms (many monomials) return nothing! Consider to use the taxonKey parameter instead and the species match service directly.",
+        examples=[["Quercus robur"], ["Homo sapiens", "Canis lupus"], ["Puma concolor"]]
     )
-    
+
+    q: Optional[str] = Field(None, 
+        description="Simple full-text search parameter. The value for this parameter can be a simple word or a phrase. Wildcards are not supported. Full-text search fields include: title, keyword, country, publishing country, publishing organization title, hosting organization title, and description.",
+        examples=["plant", "bird observation", "mammal specimen"]
+    )
+
     occurrenceId: Optional[List[str]] = Field(None,
-        description="Unique identifiers of occurrence records",
-        examples=[["2005380410"], ["1234567890", "9876543210"]]
+        description="A globally unique identifier for the occurrence record as provided by the publisher.",
+        examples=[["URN:catalog:UWBM:Bird:126493"], ["2005380410", "9876543210"]]
     )
     
     taxonKey: Optional[List[int]] = Field(None, 
-        description="GBIF backbone taxon keys",
-        examples=[[2877951], [2476674, 2877951]]
+        description="A taxon key from the GBIF backbone or the specified checklist. All included (child) and synonym taxa are included in the search, so a search for Aves with taxonKey=212 will match all birds, no matter which species.",
+        examples=[[2476674], [2877951, 212], [44, 212, 1448]]
     )
     
     datasetKey: Optional[List[UUID]] = Field(None, 
-        description="Occurrence dataset keys",
-        examples=[["13b70480-bd69-11dd-b15f-b8a03c50a862"]]
+        description="The occurrence dataset key (a UUID).",
+        examples=[["13b70480-bd69-11dd-b15f-b8a03c50a862"], ["e2e717bf-551a-4917-bdc9-4fa0f342c530"]]
     )
     
-    basisOfRecord: Optional[List[BasisOfRecord]] = Field(None, 
-        description="Basis of record types",
-        examples=[[BasisOfRecord.PRESERVED_SPECIMEN], [BasisOfRecord.HUMAN_OBSERVATION, BasisOfRecord.OBSERVATION]]
+    basisOfRecord: Optional[List[BasisOfRecordEnum]] = Field(None, 
+        description="Basis of record, as defined in our BasisOfRecord vocabulary. The values of the Darwin Core term Basis of Record which can apply to occurrences.",
+        examples=[[BasisOfRecordEnum.PRESERVED_SPECIMEN], [BasisOfRecordEnum.HUMAN_OBSERVATION, BasisOfRecordEnum.OBSERVATION], [BasisOfRecordEnum.FOSSIL_SPECIMEN, BasisOfRecordEnum.LIVING_SPECIMEN]]
     )
     
     catalogNumber: Optional[List[str]] = Field(None, 
-        description="Identifiers within physical collections/datasets"
+        description="An identifier of any form assigned by the source within a physical collection or digital dataset for the record which may not be unique, but should be fairly unique in combination with the institution and collection code.",
+        examples=[["K001275042"], ["12345", "67890"]]
     )
     
     # Geographic filters
     country: Optional[List[str]] = Field(None, 
-        description="ISO 3166-1 2-letter country codes",
-        examples=[["US"], ["GB", "FR", "DE"]]
+        description="The 2-letter country code (as per ISO-3166-1) of the country in which the occurrence was recorded.",
+        examples=[["US"], ["GB", "FR", "DE"], ["AF", "ZA", "KE"]]
     )
     
-    continent: Optional[List[Continent]] = Field(None, 
-        description="Continents",
-        examples=[[Continent.EUROPE], [Continent.NORTH_AMERICA, Continent.SOUTH_AMERICA]]
+    continent: Optional[List[ContinentEnum]] = Field(None, 
+        description="Continent, as defined in our Continent vocabulary. The continent, based on a 7 continent model described on Wikipedia and the World Geographical Scheme for Recording Plant Distributions (WGSRPD). This splits the Americas into North and South America with North America including the Caribbean (except Trinidad and Tobago) and reaching down and including Panama.",
+        examples=[[ContinentEnum.EUROPE], [ContinentEnum.NORTH_AMERICA, ContinentEnum.SOUTH_AMERICA], [ContinentEnum.AFRICA, ContinentEnum.ASIA]]
     )
     
     decimalLatitude: Optional[str] = Field(None, 
-        description="Latitude in decimal degrees range",
-        examples=["30,50", "-90,90"]
+        description="Latitude in decimal degrees between -90° and 90° based on WGS 84. Supports range queries.",
+        examples=["40.5,45", "-90,90", "30,50"]
     )
     
     decimalLongitude: Optional[str] = Field(None, 
-        description="Longitude in decimal degrees range",
-        examples=["-180,180", "-100,-50"]
+        description="Longitude in decimals between -180 and 180 based on WGS 84. Supports range queries.",
+        examples=["-120,-95.5", "-180,180", "-100,-50"]
     )
     
     hasCoordinate: Optional[bool] = Field(None, 
-        description="Whether the record has coordinates"
+        description="Limits searches to occurrence records which contain a value in both latitude and longitude (i.e. hasCoordinate=true limits to occurrence records with coordinate values and hasCoordinate=false limits to occurrence records without coordinate values).",
+        examples=[True, False]
     )
     
     hasGeospatialIssue: Optional[bool] = Field(None, 
-        description="Whether the record has spatial issues"
+        description="Includes/excludes occurrence records which contain spatial issues (as determined in our record interpretation), i.e. hasGeospatialIssue=true returns only those records with spatial issues while hasGeospatialIssue=false includes only records without spatial issues. The absence of this parameter returns any record with or without spatial issues.",
+        examples=[True, False]
     )
     
     # Temporal filters
     year: Optional[str] = Field(None, 
-        description="Year or year range",
-        examples=["2020", "2010,2020", "2020,2021,2022"]
+        description="The 4 digit year. A year of 98 will be interpreted as AD 98. Supports range queries.",
+        examples=["2020", "2010,2020", "1998,2005"]  
     )
     
     month: Optional[str] = Field(None, 
-        description="Month or month range",
+        description="The month of the year, starting with 1 for January. Supports range queries.",
         examples=["5", "1,12", "3,6,9"]
     )
     
     eventDate: Optional[List[str]] = Field(None, 
-        description="Date in ISO format: yyyy, yyyy-MM, yyyy-MM-dd",
-        examples=[["2020"], ["2020-01", "2020-12"]]
+        description="Occurrence date in ISO 8601 format: yyyy, yyyy-MM or yyyy-MM-dd. Supports range queries.",
+        examples=[["2020"], ["2020-01", "2020-12"], ["2000,2001-06-30"]]
     )
     
     # Taxonomic filters
     kingdomKey: Optional[List[int]] = Field(None, 
-        description="Kingdom classification keys"
+        description="Kingdom classification key.",
+        examples=[[5], [1, 2, 3]]
     )
     
     phylumKey: Optional[List[int]] = Field(None, 
-        description="Phylum classification keys"
+        description="Phylum classification key.",
+        examples=[[44], [1, 2, 3]]
     )
     
     classKey: Optional[List[int]] = Field(None, 
-        description="Class classification keys"
+        description="Class classification key.",
+        examples=[[212], [1, 2, 3]]
     )
     
     orderKey: Optional[List[int]] = Field(None, 
-        description="Order classification keys"
+        description="Order classification key.",
+        examples=[[1448], [1, 2, 3]]
     )
     
     familyKey: Optional[List[int]] = Field(None, 
-        description="Family classification keys"
+        description="Family classification key.",
+        examples=[[2405], [1, 2, 3]]
     )
     
     genusKey: Optional[List[int]] = Field(None, 
-        description="Genus classification keys"
+        description="Genus classification key.",
+        examples=[[2877951], [1, 2, 3]]
     )
     
     speciesKey: Optional[List[int]] = Field(None, 
-        description="Species classification keys"
+        description="Species classification key.",
+        examples=[[2476674], [1, 2, 3]]
     )
     
     # Additional filters
-    occurrenceStatus: Optional[OccurrenceStatus] = Field(None, 
-        description="Presence/absence of occurrence"
+    occurrenceStatus: Optional[OccurrenceStatusEnum] = Field(None, 
+        description="Either PRESENT or ABSENT; the presence or absence of the occurrence. A statement about the presence or absence of a Taxon at a Location.",
+        examples=[OccurrenceStatusEnum.PRESENT, OccurrenceStatusEnum.ABSENT]
     )
     
-    license: Optional[List[License]] = Field(None, 
-        description="License types",
-        examples=[[License.CC0_1_0], [License.CC_BY_4_0, License.CC_BY_NC_4_0]]
+    license: Optional[List[LicenseEnum]] = Field(None, 
+        description="The licence applied to the dataset or record by the publisher.",
+        examples=[[LicenseEnum.CC0_1_0], [LicenseEnum.CC_BY_4_0, LicenseEnum.CC_BY_NC_4_0]]
     )
     
     institutionCode: Optional[List[str]] = Field(None, 
-        description="Institution codes"
+        description="An identifier of any form assigned by the source to identify the institution the record belongs to. Not guaranteed to be unique.",
+        examples=[["K"], ["USNM", "BMNH"]]
     )
     
     collectionCode: Optional[List[str]] = Field(None, 
-        description="Collection codes"
+        description="An identifier of any form assigned by the source to identify the physical collection or digital dataset uniquely within the context of an institution.",
+        examples=[["F"], ["BIRD", "MAMMAL"]]
     )
     
     recordedBy: Optional[List[str]] = Field(None, 
-        description="Persons who recorded the occurrence"
+        description="The person who recorded the occurrence.",
+        examples=[["MiljoStyrelsen"], ["John Smith", "Jane Doe"]]
     )
     
     identifiedBy: Optional[List[str]] = Field(None, 
-        description="Persons who identified the occurrence"
+        description="The person who provided the taxonomic identification of the occurrence.",
+        examples=[["Allison"], ["Dr. Smith", "Prof. Johnson"]]
     )
     
     typeStatus: Optional[List[str]] = Field(None, 
-        description="Nomenclatural type status",
-        examples=[["HOLOTYPE"], ["PARATYPE", "SYNTYPE"]]
+        description="Nomenclatural type (type status, typified scientific name, publication) applied to the subject.",
+        examples=[["HOLOTYPE"], ["PARATYPE", "SYNTYPE"], ["LECTOTYPE", "NEOTYPE"]]
     )
     
     isSequenced: Optional[bool] = Field(None, 
-        description="Whether occurrence has associated sequences"
+        description="Flag occurrence when associated sequences exists.",
+        examples=[True, False]
     )
     
-    mediaType: Optional[List[str]] = Field(None, 
-        description="Types of associated media",
-        examples=[["StillImage"], ["MovingImage", "Sound"]]
+    mediaType: Optional[List[MediaObjectTypeEnum]] = Field(None, 
+        description="The kind of multimedia associated with an occurrence as defined in our MediaType enumeration.",
+        examples=[[MediaObjectTypeEnum.StillImage], [MediaObjectTypeEnum.MovingImage, MediaObjectTypeEnum.Sound], [MediaObjectTypeEnum.InteractiveResource]]
     )
     
     # Pagination parameters
@@ -202,72 +186,37 @@ class GBIFOccurrenceSearchParams(BaseModel):
         100,
         ge=0,
         le=300,
-        description="Number of results per page (max 300). A limit of 0 will return no record data."
+        description="Controls the number of results in the page. Using too high a value will be overwritten with the maximum threshold, which is 300 for this service. A limit of 0 will return no record data."
     )
     
     offset: Optional[int] = Field(
         0,
         ge=0, 
-        description="Offset for pagination"
+        le=100000,
+        description="Determines the offset for the search results. A limit of 20 and offset of 40 will get the third page of 20 results. This service has a maximum offset of 100,000."
     )
 
 
-class GBIFOccurrenceFacetsParams(BaseModel):
-    """Parameters for GBIF occurrence faceting - extends search params with faceting options."""
-    
-    # Inherit all search parameters
-    q: Optional[str] = Field(None, description="Full-text search parameter")
-    scientificName: Optional[List[str]] = Field(None, description="Scientific names from the GBIF backbone")
-    occurrenceId: Optional[List[str]] = Field(None, description="Unique identifiers of occurrence records")
-    taxonKey: Optional[List[int]] = Field(None, description="GBIF backbone taxon keys")
-    datasetKey: Optional[List[UUID]] = Field(None, description="Occurrence dataset keys")
-    basisOfRecord: Optional[List[BasisOfRecord]] = Field(None, description="Basis of record types")
-    catalogNumber: Optional[List[str]] = Field(None, description="Identifiers within physical collections/datasets")
-    
-    # Geographic filters
-    country: Optional[List[str]] = Field(None, description="ISO 3166-1 2-letter country codes")
-    continent: Optional[List[Continent]] = Field(None, description="Continents")
-    decimalLatitude: Optional[str] = Field(None, description="Latitude in decimal degrees range")
-    decimalLongitude: Optional[str] = Field(None, description="Longitude in decimal degrees range")
-    hasCoordinate: Optional[bool] = Field(None, description="Whether the record has coordinates")
-    hasGeospatialIssue: Optional[bool] = Field(None, description="Whether the record has spatial issues")
-    
-    # Temporal filters
-    year: Optional[str] = Field(None, description="Year or year range")
-    month: Optional[str] = Field(None, description="Month or month range")
-    eventDate: Optional[List[str]] = Field(None, description="Date in ISO format")
-    
-    # Taxonomic filters
-    kingdomKey: Optional[List[int]] = Field(None, description="Kingdom classification keys")
-    phylumKey: Optional[List[int]] = Field(None, description="Phylum classification keys")
-    classKey: Optional[List[int]] = Field(None, description="Class classification keys")
-    orderKey: Optional[List[int]] = Field(None, description="Order classification keys")
-    familyKey: Optional[List[int]] = Field(None, description="Family classification keys")
-    genusKey: Optional[List[int]] = Field(None, description="Genus classification keys")
-    speciesKey: Optional[List[int]] = Field(None, description="Species classification keys")
-    
-    # Additional filters
-    occurrenceStatus: Optional[OccurrenceStatus] = Field(None, description="Presence/absence of occurrence")
-    license: Optional[List[License]] = Field(None, description="License types")
-    institutionCode: Optional[List[str]] = Field(None, description="Institution codes")
-    collectionCode: Optional[List[str]] = Field(None, description="Collection codes")
-    recordedBy: Optional[List[str]] = Field(None, description="Persons who recorded the occurrence")
-    identifiedBy: Optional[List[str]] = Field(None, description="Persons who identified the occurrence")
-    typeStatus: Optional[List[str]] = Field(None, description="Nomenclatural type status")
-    isSequenced: Optional[bool] = Field(None, description="Whether occurrence has associated sequences")
-    mediaType: Optional[List[str]] = Field(None, description="Types of associated media")
+class GBIFOccurrenceSearchParams(GBIFOccurrenceBaseParams):
+    """Parameters for GBIF occurrence search - matches API structure"""
+    pass
+
+
+class GBIFOccurrenceFacetsParams(GBIFOccurrenceBaseParams):
+    """Parameters for GBIF occurrence faceting - extends search params with faceting options"""
     
     # Faceting parameters
     facet: List[str] = Field(
         ...,
-        description="Fields to facet by",
-        examples=[["scientificName"], ["country", "year"], ["basisOfRecord", "kingdom"]]
+        description="A facet name used to retrieve the most frequent values for a field. Facets are allowed for all search parameters except geometry and geoDistance. This parameter may be repeated to request multiple facets. Note terms not available for searching are not available for faceting.",
+        examples=[["scientificName"], ["country", "year"], ["basisOfRecord", "kingdom"], ["datasetKey", "publishingCountry"]]
     )
     
     facetMincount: Optional[int] = Field(
         1,
-        description="Minimum count for facet values",
-        ge=1
+        ge=1,
+        description="Used in combination with the facet parameter. Set facetMincount={#} to exclude facets with a count less than {#}.",
+        examples=[100, 1000, 10000]
     )
     
     facetMultiselect: Optional[bool] = Field(
@@ -275,16 +224,10 @@ class GBIFOccurrenceFacetsParams(BaseModel):
         description="Allow multi-select faceting"
     )
     
-    # Pagination parameters
+    # Override limit default for faceting (0 for facets only)
     limit: Optional[int] = Field(
         0,
         ge=0,
         le=300,
         description="Number of results per page (0 for facets only)"
-    )
-    
-    offset: Optional[int] = Field(
-        0,
-        ge=0, 
-        description="Offset for pagination"
     )
