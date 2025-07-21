@@ -8,8 +8,8 @@ Parameters are provided by the upstream service - no LLM generation needed.
 from ichatbio.agent_response import ResponseContext, IChatBioAgentProcess
 from ichatbio.types import AgentEntrypoint
 
-from gbif_logic import GBIF
-from models.entrypoints import GBIFOccurrenceSearchParams
+from src.api import GbifApi
+from src.models.entrypoints import GBIFOccurrenceSearchParams
 
 
 description = """
@@ -41,17 +41,17 @@ async def run(context: ResponseContext, request: str, params: GBIFOccurrenceSear
     async with context.begin_process("Searching GBIF occurrence records") as process:
         process: IChatBioAgentProcess
         
-        gbif = GBIF()
+        gbif_api = GbifApi()
         
         await process.log("Extracted search parameters", data=params.model_dump(exclude_defaults=True))
         
         # Build the API URL
-        api_url = gbif.build_occurrence_search_url(params)
+        api_url = gbif_api.build_occurrence_search_url(params)
         await process.log(f"Constructed API URL: {api_url}")
         
         try:
             await process.log("Querying GBIF for occurrence data...")
-            raw_response = await gbif.execute_request(api_url)
+            raw_response = await gbif_api.execute_request(api_url)
             
             total = raw_response.get('count', 0)
             returned = len(raw_response.get('results', []))
@@ -67,7 +67,7 @@ async def run(context: ResponseContext, request: str, params: GBIFOccurrenceSear
                     "data_source": "GBIF",
                     "record_count": returned,
                     "total_matches": total,
-                    "portal_url": gbif.build_portal_url(api_url)
+                    "portal_url": gbif_api.build_portal_url(api_url)
                 }
             )
             
@@ -75,7 +75,7 @@ async def run(context: ResponseContext, request: str, params: GBIFOccurrenceSear
             summary = f"I have successfully searched for occurrences and found {total} matching records. "
             if returned < total:
                 summary += f"I've returned {returned} records in this response. "
-            summary += f"The results can be viewed in the GBIF portal at {gbif.build_portal_url(api_url)}."
+            summary += f"The results can be viewed in the GBIF portal at {gbif_api.build_portal_url(api_url)}."
             
             await context.reply(summary)
             

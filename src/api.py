@@ -12,7 +12,7 @@ from urllib.parse import urlencode
 from src.models.entrypoints import GBIFOccurrenceSearchParams, GBIFOccurrenceFacetsParams
 
 
-class GBIF:
+class GbifApi:
     """GBIF API interaction logic."""
     
     def __init__(self):

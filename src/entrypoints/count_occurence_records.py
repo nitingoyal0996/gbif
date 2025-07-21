@@ -8,8 +8,8 @@ Parameters are provided by the upstream service - no LLM generation needed.
 from ichatbio.agent_response import ResponseContext, IChatBioAgentProcess
 from ichatbio.types import AgentEntrypoint
 
-from gbif_logic import GBIF
-from models.entrypoints import GBIFOccurrenceFacetsParams
+from src.api import GbifApi
+from src.models.entrypoints import GBIFOccurrenceFacetsParams
 
 
 description = """
@@ -39,7 +39,7 @@ async def run(context: ResponseContext, request: str, params: GBIFOccurrenceFace
     async with context.begin_process("Counting GBIF occurrence records with facets") as process:
         process: IChatBioAgentProcess
         
-        gbif = GBIF()
+        gbif = GbifApi()
         
         await process.log("Extracted search and facet parameters", data=params.model_dump(exclude_defaults=True))
         
