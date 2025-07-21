@@ -10,6 +10,7 @@ from ichatbio.types import AgentEntrypoint
 
 from src.api import GbifApi
 from src.models.entrypoints import GBIFOccurrenceSearchParams
+from src.log import with_logging
 
 
 description = """
@@ -33,6 +34,7 @@ entrypoint = AgentEntrypoint(
 )
 
 
+@with_logging("find_occurrence_records")
 async def run(context: ResponseContext, request: str, params: GBIFOccurrenceSearchParams):
     """
     Executes the occurrence search entrypoint. Searches for occurrence records using the provided

@@ -10,6 +10,7 @@ from ichatbio.types import AgentEntrypoint
 
 from src.api import GbifApi
 from src.models.entrypoints import GBIFOccurrenceFacetsParams
+from src.log import with_logging
 
 
 description = """
@@ -31,6 +32,7 @@ entrypoint = AgentEntrypoint(
 )
 
 
+@with_logging("count_occurrence_records")
 async def run(context: ResponseContext, request: str, params: GBIFOccurrenceFacetsParams):
     """
     Executes the occurrence counting entrypoint. Counts occurrence records using the provided

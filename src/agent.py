@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 from src.entrypoints import find_occurrence_records, count_occurence_records
 from src.models.entrypoints import GBIFOccurrenceSearchParams, GBIFOccurrenceFacetsParams
+from src.log import logger
 
 
 class GBIFAgent(IChatBioAgent):
@@ -25,10 +26,24 @@ class GBIFAgent(IChatBioAgent):
 
     @override
     async def run(self, context: ResponseContext, request: str, entrypoint: str, params: Optional[BaseModel]):
-        match entrypoint:
-            case find_occurrence_records.entrypoint.id:
-                await find_occurrence_records.run(context, request, cast(GBIFOccurrenceSearchParams, params))
-            case count_occurence_records.entrypoint.id:
-                await count_occurence_records.run(context, request, cast(GBIFOccurrenceFacetsParams, params))
-            case _:
-                raise ValueError(f"Unknown entrypoint: {entrypoint}")
+        logger.info(f"AGENT | Entrypoint={entrypoint} | Request={request}")
+        try:
+            match entrypoint:
+                case find_occurrence_records.entrypoint.id:
+                    await find_occurrence_records.run(
+                        context, request, cast(GBIFOccurrenceSearchParams, params)
+                    )
+                case count_occurence_records.entrypoint.id:
+                    await count_occurence_records.run(
+                        context, request, cast(GBIFOccurrenceFacetsParams, params)
+                    )
+                case _:
+                    error_msg = f"Unknown entrypoint: {entrypoint}"
+                    logger.error(f"AGENT_ERROR | {error_msg}")
+                    raise ValueError(error_msg)
+
+        except Exception as e:
+            logger.error(
+                f"AGENT_ERROR | Entrypoint={entrypoint} | Error={type(e).__name__}: {str(e)}"
+            )
+            raise
