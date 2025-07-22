@@ -16,6 +16,7 @@ RUN mkdir -p /var/log/flask-app \
       && touch /var/log/flask-app/flask-app.err.log \
       && touch /var/log/flask-app/flask-app.out.log \
       && chown -R nonroot:nonroot /var/log/flask-app
+RUN mkdir -p /home/app/logs && chown -R nonroot:nonroot /home/app/logs
 
 WORKDIR /home/app
 COPY --chown=nonroot:nonroot . .
