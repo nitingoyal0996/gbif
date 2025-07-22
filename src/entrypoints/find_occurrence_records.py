@@ -5,6 +5,7 @@ This entrypoint searches for species occurrence records using the GBIF occurrenc
 Parameters are provided by the upstream service - no LLM generation needed.
 """
 import uuid
+from typing import Optional
 
 from ichatbio.agent_response import ResponseContext, IChatBioAgentProcess
 from ichatbio.types import AgentEntrypoint
@@ -12,6 +13,7 @@ from ichatbio.types import AgentEntrypoint
 from src.api import GbifApi
 from src.models.entrypoints import GBIFOccurrenceSearchParams
 from src.log import with_logging
+from src.llm_parse import parse_gbif_occurrence_search_request
 
 
 description = """
@@ -40,13 +42,19 @@ entrypoint = AgentEntrypoint(
 
 
 @with_logging("find_occurrence_records")
-async def run(context: ResponseContext, request: str, params: GBIFOccurrenceSearchParams):
+async def run(
+    context: ResponseContext, request: str, params: Optional[GBIFOccurrenceSearchParams]
+):
     """
     Executes the occurrence search entrypoint. Searches for occurrence records using the provided
     parameters and creates an artifact with the results.
     """
     # Generate a unique agent log ID for this run for logging purposes
     AGENT_LOG_ID = f"FIND_OCCURRENCE_RECORDS_{str(uuid.uuid4())[:6]}"
+
+    await context.reply("Parsing request parameters using LLM...")
+    params = await parse_gbif_occurrence_search_request(request)
+    params = GBIFOccurrenceSearchParams(**params)
 
     async with context.begin_process("Searching GBIF occurrence records") as process:
         process: IChatBioAgentProcess

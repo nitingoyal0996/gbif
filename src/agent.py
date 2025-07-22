@@ -1,4 +1,5 @@
-from typing import Optional, cast
+import asyncio
+from typing import Optional
 from typing_extensions import override
 
 from ichatbio.agent import IChatBioAgent
@@ -7,7 +8,6 @@ from ichatbio.types import AgentCard
 from pydantic import BaseModel
 
 from src.entrypoints import find_occurrence_records, count_occurence_records
-from src.models.entrypoints import GBIFOccurrenceSearchParams, GBIFOccurrenceFacetsParams
 from src.log import logger
 
 
@@ -30,13 +30,9 @@ class GBIFAgent(IChatBioAgent):
         try:
             match entrypoint:
                 case find_occurrence_records.entrypoint.id:
-                    await find_occurrence_records.run(
-                        context, request, cast(GBIFOccurrenceSearchParams, params)
-                    )
+                    await find_occurrence_records.run(context, request, params=None)
                 case count_occurence_records.entrypoint.id:
-                    await count_occurence_records.run(
-                        context, request, cast(GBIFOccurrenceFacetsParams, params)
-                    )
+                    await count_occurence_records.run(context, request, params=None)
                 case _:
                     error_msg = f"Unknown entrypoint: {entrypoint}"
                     logger.error(f"AGENT_ERROR | {error_msg}")

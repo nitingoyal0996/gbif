@@ -5,12 +5,16 @@ This entrypoint counts occurrence records and provides faceted statistics using 
 Parameters are provided by the upstream service - no LLM generation needed.
 """
 import uuid
+from typing import Optional
+
 from ichatbio.agent_response import ResponseContext, IChatBioAgentProcess
 from ichatbio.types import AgentEntrypoint
 
 from src.api import GbifApi
 from src.models.entrypoints import GBIFOccurrenceFacetsParams
 from src.log import with_logging
+
+from src.llm_parse import parse_gbif_occurrence_facets_request
 
 
 description = """
@@ -37,13 +41,19 @@ entrypoint = AgentEntrypoint(
 
 
 @with_logging("count_occurrence_records")
-async def run(context: ResponseContext, request: str, params: GBIFOccurrenceFacetsParams):
+async def run(
+    context: ResponseContext, request: str, params: Optional[GBIFOccurrenceFacetsParams]
+):
     """
     Executes the occurrence counting entrypoint. Counts occurrence records using the provided
     parameters and creates an artifact with the faceted results.
     """
     # Generate a unique agent log ID for this run for logging purposes
     AGENT_LOG_ID = f"COUNT_OCCURRENCE_RECORDS_{str(uuid.uuid4())[:6]}"
+
+    await context.reply("Parsing request parameters using LLM...")
+    params = await parse_gbif_occurrence_facets_request(request)
+    params = GBIFOccurrenceFacetsParams(**params)
 
     async with context.begin_process("Counting GBIF occurrence records with facets") as process:
         process: IChatBioAgentProcess
