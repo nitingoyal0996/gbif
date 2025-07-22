@@ -113,19 +113,19 @@ class GBIFOccurrenceBaseParams(ProductionBaseModel):
     # Temporal filters
     year: Optional[str] = Field(
         None,
-        description="The 4 digit year. A year of 98 will be interpreted as AD 98. Supports range queries.",
+        description="The 4 digit year. A year of 98 will be interpreted as AD 98. Supports range queries. For instance: year='2020,2023' will return all records from 2020 and 2023.",
         examples=["2020", "2010,2020", "1998,2005"],
     )
 
     month: Optional[str] = Field(
         None,
-        description="The month of the year, starting with 1 for January. Supports range queries.",
-        examples=["5", "1,12", "3,6,9"],
+        description="The month of the year, starting with 1 for January. Supports range queries. For instance: month='5,12' will return all records from May to December.",
+        examples=["5", "1,12", "3,9"],
     )
 
     eventDate: Optional[List[str]] = Field(
         None,
-        description="Occurrence date in ISO 8601 format: yyyy, yyyy-MM or yyyy-MM-dd. Supports range queries.",
+        description="Occurrence date in ISO 8601 format: yyyy, yyyy-MM or yyyy-MM-dd. Supports range queries. For instance: eventDate='2020,2023' will return all records from 2020 and 2023.",
         examples=[["2020"], ["2020-01", "2020-12"], ["2000,2001-06-30"]],
     )
 
