@@ -26,6 +26,10 @@ Parameters include search criteria such as:
 - Taxonomic filters (kingdom, phylum, class, etc.)
 - Record type filters (basis of record, occurrence status)
 - Pagination parameters (limit, offset)
+
+Note:
+- Year is a 4 digit year. A year of 98 will be interpreted as AD 98. Supports range queries. For instance: year='2020,2023' will return all records from 2020 and 2023.
+- Month is the month of the year, starting with 1 for January. Supports range queries. For instance: month='5,12' will return all records from May to December.
 """
 
 entrypoint = AgentEntrypoint(

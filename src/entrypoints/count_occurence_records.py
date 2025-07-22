@@ -23,6 +23,10 @@ Parameters are provided by the upstream service and include search criteria plus
 - Facet fields to analyze (scientificName, country, year, etc.)
 - Facet minimum count thresholds
 - Facet selection options
+
+Note:
+- Year is a 4 digit year. A year of 98 will be interpreted as AD 98. Supports range queries. For instance: year='2020,2023' will return all records from 2020 and 2023.
+- Month is the month of the year, starting with 1 for January. Supports range queries. For instance: month='5,12' will return all records from May to December.
 """
 
 entrypoint = AgentEntrypoint(
