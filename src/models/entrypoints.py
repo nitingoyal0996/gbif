@@ -113,7 +113,7 @@ class GBIFOccurrenceBaseParams(ProductionBaseModel):
     # Temporal filters
     year: Optional[str] = Field(
         None,
-        description="The 4 digit year. A year of 98 will be interpreted as AD 98. Supports range queries. For instance: year='2020,2023' will return all records from 2020 and 2023.",
+        description="The 4 digit year. A year of 98 will be interpreted as AD 98. Supports range queries using comma-separated values. For instance: year='2020,2023' will return all records from 2020 and 2023 (not including 2021 and 2022). To express a range 'from YYY1 to YYY3', use the format 'YYY1,YYY3'.",
         examples=["2020", "2010,2020", "1998,2005"],
     )
 
