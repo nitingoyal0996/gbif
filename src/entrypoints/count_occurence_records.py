@@ -42,7 +42,7 @@ entrypoint = AgentEntrypoint(
 
 @with_logging("count_occurrence_records")
 async def run(
-    context: ResponseContext, request: str, params: Optional[GBIFOccurrenceFacetsParams]
+    context: ResponseContext, request: str, params: GBIFOccurrenceFacetsParams
 ):
     """
     Executes the occurrence counting entrypoint. Counts occurrence records using the provided

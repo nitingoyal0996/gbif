@@ -43,7 +43,7 @@ entrypoint = AgentEntrypoint(
 
 @with_logging("find_occurrence_records")
 async def run(
-    context: ResponseContext, request: str, params: Optional[GBIFOccurrenceSearchParams]
+    context: ResponseContext, request: str, params: GBIFOccurrenceSearchParams
 ):
     """
     Executes the occurrence search entrypoint. Searches for occurrence records using the provided
