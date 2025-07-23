@@ -14,7 +14,7 @@ from src.api import GbifApi
 from src.models.entrypoints import GBIFOccurrenceFacetsParams
 from src.log import with_logging
 
-from src.llm_parse import parse_gbif_occurrence_facets_request
+# from src.llm_parse import parse_gbif_occurrence_facets_request
 
 
 description = """
@@ -51,9 +51,9 @@ async def run(
     # Generate a unique agent log ID for this run for logging purposes
     AGENT_LOG_ID = f"COUNT_OCCURRENCE_RECORDS_{str(uuid.uuid4())[:6]}"
 
-    await context.reply("Parsing request parameters using LLM...")
-    params = await parse_gbif_occurrence_facets_request(request)
-    params = GBIFOccurrenceFacetsParams(**params)
+    # await context.reply("Parsing request parameters using LLM...")
+    # params = await parse_gbif_occurrence_facets_request(request)
+    # params = GBIFOccurrenceFacetsParams(**params)
 
     async with context.begin_process("Counting GBIF occurrence records with facets") as process:
         process: IChatBioAgentProcess
