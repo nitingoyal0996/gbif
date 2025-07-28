@@ -2,13 +2,23 @@ from typing import List, Optional
 from uuid import UUID
 from pydantic import Field, field_validator
 
-from .gbif import (
+from .base import ProductionBaseModel
+
+from .enums.occurence_parameters import (
     BasisOfRecordEnum,
     ContinentEnum,
     OccurrenceStatusEnum,
     LicenseEnum,
     MediaObjectTypeEnum,
-    ProductionBaseModel,
+)
+
+from .enums.species_parameters import (
+    TaxonomicRankEnum,
+    TaxonomicStatusEnum,
+    HabitatEnum,
+    ThreatStatusEnum,
+    NameTypeEnum,
+    OriginEnum,
 )
 
 
@@ -311,4 +321,201 @@ class GBIFOccurrenceFacetsParams(GBIFOccurrenceBaseParams):
     # Override limit default for faceting (0 for facets only)
     limit: Optional[int] = Field(
         0, ge=0, le=300, description="Number of results per page (0 for facets only)"
+    )
+
+
+class GBIFSpeciesSearchParams(ProductionBaseModel):
+    """Parameters for GBIF species search - full text search over name usages covering scientific and vernacular names, species descriptions, distribution and classification data"""
+
+    # Core search parameters
+    q: Optional[str] = Field(
+        None,
+        description="Simple full text search parameter covering scientific and vernacular names, species descriptions, distribution and entire classification. The value can be a simple word or phrase. Wildcards are not supported. Results are ordered by relevance.",
+        examples=[
+            "Puma concolor",
+            "jaguar",
+            "Quercus",
+            "oak tree",
+            "Panthera tigris",
+            "endangered cats",
+        ],
+    )
+
+    datasetKey: Optional[str] = Field(
+        None,
+        description="A UUID of a checklist dataset to limit the search scope. Useful for searching within specific taxonomic authorities or regional checklists.",
+        examples=["d7dddbf4-2cf0-4f39-9b2a-bb099caae36c"],  # GBIF Backbone Taxonomy
+    )
+
+    constituentKey: Optional[str] = Field(
+        None,
+        description="The (sub)dataset constituent key as a UUID. Useful to query larger assembled datasets such as the GBIF Backbone or the Catalogue of Life for specific constituent parts.",
+        examples=["7ce8aef0-9e92-11dc-8738-b8a03c50a862"],
+    )
+
+    rank: Optional[TaxonomicRankEnum] = Field(
+        None,
+        description="Filters by taxonomic rank as defined in the GBIF rank enumeration. Helps narrow results to specific taxonomic levels.",
+        examples=[
+            TaxonomicRankEnum.SPECIES,
+            TaxonomicRankEnum.GENUS,
+            TaxonomicRankEnum.FAMILY,
+            TaxonomicRankEnum.ORDER,
+        ],
+    )
+
+    higherTaxonKey: Optional[int] = Field(
+        None,
+        description="Filters by any of the higher Linnean rank keys within the respective checklist. Note this searches within the specific checklist, not across all NUB keys. Useful for finding all taxa under a specific higher taxon.",
+        examples=[212, 44, 1448, 2405],  # Example keys for different higher taxa
+    )
+
+    status: Optional[TaxonomicStatusEnum] = Field(
+        None,
+        description="Filters by the taxonomic status to distinguish between accepted names, synonyms, and doubtful names. Essential for taxonomic research and data quality control.",
+        examples=[
+            TaxonomicStatusEnum.ACCEPTED,
+            TaxonomicStatusEnum.SYNONYM,
+            TaxonomicStatusEnum.DOUBTFUL,
+        ],
+    )
+
+    isExtinct: Optional[bool] = Field(
+        None,
+        description="Filters by extinction status. True returns only extinct taxa, False returns only extant taxa, None returns both.",
+        examples=[True, False],
+    )
+
+    habitat: Optional[HabitatEnum] = Field(
+        None,
+        description="Filters by major habitat classification. Currently supports three major biomes as defined in the GBIF habitat enumeration.",
+        examples=[HabitatEnum.MARINE, HabitatEnum.FRESHWATER, HabitatEnum.TERRESTRIAL],
+    )
+
+    threat: Optional[ThreatStatusEnum] = Field(
+        None,
+        description="Filters by IUCN Red List threat status categories. Useful for conservation research and identifying species of conservation concern.",
+        examples=[
+            ThreatStatusEnum.CRITICALLY_ENDANGERED,
+            ThreatStatusEnum.ENDANGERED,
+            ThreatStatusEnum.VULNERABLE,
+            ThreatStatusEnum.NEAR_THREATENED,
+            ThreatStatusEnum.LEAST_CONCERN,
+            ThreatStatusEnum.DATA_DEFICIENT,
+        ],
+    )
+
+    nameType: Optional[NameTypeEnum] = Field(
+        None,
+        description="Filters by the type of name string as classified by GBIF's name parser. Helps distinguish between different categories of taxonomic names.",
+        examples=[
+            NameTypeEnum.SCIENTIFIC,
+            NameTypeEnum.VIRUS,
+            NameTypeEnum.HYBRID,
+            NameTypeEnum.CULTIVAR,
+            NameTypeEnum.INFORMAL,
+        ],
+    )
+
+    nomenclaturalStatus: Optional[str] = Field(
+        None,
+        description="Filters by nomenclatural status according to the relevant nomenclatural code. Important for understanding the validity and legitimacy of scientific names.",
+        examples=[
+            "LEGITIMATE",
+            "VALIDLY_PUBLISHED",
+            "NEW_COMBINATION",
+            "REPLACEMENT",
+            "CONSERVED",
+            "ILLEGITIMATE",
+            "INVALID",
+            "REJECTED",
+        ],
+    )
+
+    origin: Optional[OriginEnum] = Field(
+        None,
+        description="Filters for name usages with a specific origin, indicating how the name usage was created or derived during data processing.",
+        examples=[
+            OriginEnum.SOURCE,
+            OriginEnum.DENORMED_CLASSIFICATION,
+            OriginEnum.VERBATIM_PARENT,
+            OriginEnum.AUTONYM,
+        ],
+    )
+
+    issue: Optional[str] = Field(
+        None,
+        description="Filters by specific data quality issues identified during GBIF's indexing process. Useful for data quality assessment and cleanup.",
+        examples=[
+            "BACKBONE_MATCH_NONE",
+            "BACKBONE_MATCH_FUZZY",
+            "ACCEPTED_NAME_MISSING",
+            "CLASSIFICATION_RANK_ORDER_INVALID",
+            "TAXONOMIC_STATUS_MISMATCH",
+        ],
+    )
+
+    hl: Optional[bool] = Field(
+        None,
+        description="Enable search term highlighting in results. When set to true, matching terms in fulltext search fields will be wrapped in emphasis tags with class 'gbifHl' for visual highlighting.",
+        examples=[True, False],
+    )
+
+    # Pagination parameters
+    limit: Optional[int] = Field(
+        20,
+        ge=0,
+        le=1000,
+        description="Controls the number of results returned per page. Higher values may be capped by service limits. Use with offset for pagination through large result sets.",
+        examples=[10, 20, 50, 100],
+    )
+
+    offset: Optional[int] = Field(
+        0,
+        ge=0,
+        description="Determines the starting point for search results. Use with limit for pagination. For example, limit=20 and offset=40 returns the third page of 20 results.",
+        examples=[0, 20, 100, 500],
+    )
+
+
+class GBIFSpeciesFacetsParams(GBIFSpeciesSearchParams):
+    """Parameters for GBIF species faceting - extends species search params with required faceting options for counting and statistical analysis"""
+
+    facet: Optional[List[str]] = Field(
+        None,
+        description="Facet field names for retrieving frequency counts of field values. Useful for analyzing result distributions and building filter interfaces. Can be repeated for multiple facets.",
+        examples=[
+            ["rank"],
+            ["status", "habitat"],
+            ["nameType", "threat"],
+            ["rank", "status", "habitat"],
+            ["datasetKey", "constituentKey"],
+        ],
+    )
+
+    facetMincount: Optional[int] = Field(
+        None,
+        ge=1,
+        description="Minimum count threshold for facet values. Excludes facet values with counts below this threshold to reduce noise in facet results.",
+        examples=[1, 10, 100, 1000],
+    )
+
+    facetMultiselect: Optional[bool] = Field(
+        None,
+        description="When enabled, facet counts include values that are not currently filtered, allowing for multi-select filter interfaces with accurate counts.",
+        examples=[True, False],
+    )
+
+    facetLimit: Optional[int] = Field(
+        None,
+        ge=1,
+        description="Maximum number of facet values to return per facet field. Use with facetOffset for paginating through large facet result sets.",
+        examples=[10, 50, 100],
+    )
+
+    facetOffset: Optional[int] = Field(
+        None,
+        ge=0,
+        description="Starting offset for facet value results. Use with facetLimit for paginating through facet values when there are many distinct values.",
+        examples=[0, 50, 100],
     )
