@@ -56,31 +56,28 @@ class GbifApi:
         return api_params
 
     def build_occurrence_search_url(self, params: GBIFOccurrenceSearchParams) -> str:
-        """Build URL for occurrence search."""
         api_params = self._convert_to_api_params(params)
         query_string = urlencode(api_params, doseq=True)
         return f"{self.base_url}/occurrence/search?{query_string}"
 
     def build_occurrence_facets_url(self, params: GBIFOccurrenceFacetsParams) -> str:
-        """Build URL for occurrence facets search."""
         api_params = self._convert_to_api_params(params)
+        api_params["limit"] = 0
         query_string = urlencode(api_params, doseq=True)
         return f"{self.base_url}/occurrence/search?{query_string}"
 
     def build_species_search_url(self, params: GBIFSpeciesSearchParams) -> str:
-        """Build URL for species search."""
         api_params = self._convert_to_api_params(params)
         query_string = urlencode(api_params, doseq=True)
         return f"{self.base_url}/species/search?{query_string}"
 
     def build_species_facets_url(self, params: GBIFSpeciesFacetsParams) -> str:
-        """Build URL for species facets search."""
         api_params = self._convert_to_api_params(params)
+        api_params["limit"] = 0
         query_string = urlencode(api_params, doseq=True)
         return f"{self.base_url}/species/search?{query_string}"
 
     def build_portal_url(self, api_url: str) -> str:
-        """Convert API URL to portal URL."""
         if "/occurrence/search?" in api_url:
             return api_url.replace(self.base_url, self.portal_url)
         elif "/species/search?" in api_url:
@@ -88,18 +85,15 @@ class GbifApi:
         return api_url
 
     def execute_sync_request(self, url: str) -> Dict[str, Any]:
-        """Execute synchronous HTTP request."""
         response = requests.get(url, timeout=self.config["timeout"])
         response.raise_for_status()
         return response.json()
 
     async def execute_request(self, url: str) -> Dict[str, Any]:
-        """Execute asynchronous HTTP request."""
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, self.execute_sync_request, url)
 
     def format_response_summary(self, response_data: Dict[str, Any]) -> str:
-        """Format response data into a human-readable summary."""
         if not response_data:
             return "No data returned"
 
