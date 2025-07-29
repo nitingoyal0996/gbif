@@ -31,8 +31,16 @@ class GBIFAgent(IChatBioAgent):
         )
 
     @override
-    async def run(self, context: ResponseContext, request: str, entrypoint: str):
+    async def run(
+        self,
+        context: ResponseContext,
+        request: str,
+        entrypoint: str,
+        params: Optional[BaseModel],
+    ):
         logger.info(f"AGENT | Entrypoint={entrypoint} | Request={request}")
+        if params:
+            logger.info(f"AGENT | Received params: {params}")
         try:
             match entrypoint:
                 case find_occurrence_records.entrypoint.id:
