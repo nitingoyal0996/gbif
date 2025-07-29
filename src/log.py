@@ -287,23 +287,15 @@ def with_logging(entrypoint_id: str):
 
     def decorator(func: Callable[[ResponseContext, str, P], Any]):
         @wraps(func)
-        async def wrapper(context: ResponseContext, request: str, params: P):
+        async def wrapper(context: ResponseContext, request: str):
             start_time = datetime.now(timezone.utc)
 
             try:
-                # Log entrypoint entry
-                param_dict = (
-                    params.model_dump(exclude_defaults=True)
-                    if hasattr(params, "model_dump")
-                    else str(params)
-                )
-                logger.info(
-                    f"ENTRY | Entrypoint={entrypoint_id} | Request={request} | Params={param_dict}"
-                )
+                logger.info(f"ENTRY | Entrypoint={entrypoint_id} | Request={request}")
 
                 # Execute with logging context
                 async with wrap_context(context):
-                    result = await func(context, request, params)
+                    result = await func(context, request)
 
                 # Log successful completion
                 duration = (datetime.now(timezone.utc) - start_time).total_seconds()

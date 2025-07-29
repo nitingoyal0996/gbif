@@ -19,34 +19,29 @@ from src.parser import parse, GBIFPath
 
 
 description = """
-Search species name usages with full-text search across scientific names, vernacular names, 
-descriptions, and taxonomic classifications. Results ordered by relevance.
+Search species name usages across scientific names, vernacular names, descriptions, and taxonomic classifications. Results ordered by relevance.
 
 Search examples:
-• "Puma concolor" → Find specific species by scientific name
-• "jaguar" → Search by common name across all languages  
-• "endangered cats" → Full-text search in descriptions and classifications
-• "Quercus" → Find all oak species and related taxa
-• "marine mammals" → Search descriptions and habitat information
+• Find Puma concolor species records
+• Find endangered cat species by rank, status and threat level
+• Find marine mammals species records
 """
 
 entrypoint = AgentEntrypoint(
-    id="search_species",
+    id="find_species_records",
     description="Search species name usages",
-    parameters=GBIFSpeciesSearchParams,
+    parameters=None,
 )
 
 
-@with_logging("search_species")
-async def run(
-    context: ResponseContext, request: str, params: Optional[GBIFSpeciesSearchParams]
-):
+@with_logging("find_species_records")
+async def run(context: ResponseContext, request: str):
     """
     Executes the species search entrypoint. Searches for species name usages using the provided
     parameters and creates an artifact with the results.
     """
     # Generate a unique agent log ID for this run for logging purposes
-    AGENT_LOG_ID = f"SEARCH_SPECIES_{str(uuid.uuid4())[:6]}"
+    AGENT_LOG_ID = f"FIND_SPECIES_RECORDS_{str(uuid.uuid4())[:6]}"
 
     await context.reply("Parsing request parameters using LLM...")
     params = await parse(request, GBIFPath.SPECIES, GBIFSpeciesSearchParams)

@@ -37,14 +37,12 @@ Common facet dimensions:
 entrypoint = AgentEntrypoint(
     id="count_species_records",
     description="Count species records with faceted statistics",
-    parameters=GBIFSpeciesFacetsParams,
+    parameters=None,
 )
 
 
 @with_logging("count_species_records")
-async def run(
-    context: ResponseContext, request: str, params: Optional[GBIFSpeciesFacetsParams]
-):
+async def run(context: ResponseContext, request: str):
     """
     Executes the species counting entrypoint. Counts species name usage records using the provided
     parameters and creates an artifact with the faceted statistical results.

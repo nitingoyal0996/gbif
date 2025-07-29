@@ -37,14 +37,12 @@ Note:
 entrypoint = AgentEntrypoint(
     id="count_occurrence_records",
     description="Count occurrence records with facets",
-    parameters=GBIFOccurrenceFacetsParams,
+    parameters=None,
 )
 
 
 @with_logging("count_occurrence_records")
-async def run(
-    context: ResponseContext, request: str, params: Optional[GBIFOccurrenceFacetsParams]
-):
+async def run(context: ResponseContext, request: str):
     """
     Executes the occurrence counting entrypoint. Counts occurrence records using the provided
     parameters and creates an artifact with the faceted results.

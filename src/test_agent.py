@@ -3,7 +3,7 @@ import asyncio
 from typing import List
 from src.entrypoints.find_occurrence_records import run as find_occurrence_records_run
 from src.entrypoints.count_occurence_records import run as count_occurrence_records_run
-from src.entrypoints.search_species import run as search_species_run
+from src.entrypoints.find_species_records import run as find_species_records_run
 from src.entrypoints.count_species_records import run as count_species_records_run
 from ichatbio.agent_response import ResponseContext
 
@@ -28,16 +28,16 @@ class SimpleProcess:
         self.title = title
         self.messages = messages
         print(f"Starting process: {title}")
-    
+
     async def __aenter__(self):
         return self
-    
+
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         if exc_type:
             print(f"Process failed: {exc_val}")
         else:
             print(f"Process completed: {self.title}")
-    
+
     async def log(self, message: str, data=None):
         log_entry = {"message": message, "data": data}
         self.messages.append(log_entry)
@@ -45,7 +45,7 @@ class SimpleProcess:
             print(f"Log: {message} | Data: {data}")
         else:
             print(f"Log: {message}")
-    
+
     async def create_artifact(self, mimetype: str, description: str, uris=None, metadata=None):
         artifact = {
             "type": "artifact",
@@ -55,7 +55,7 @@ class SimpleProcess:
             "metadata": metadata
         }
         self.messages.append(artifact)
-        print(f"📦 Artifact: {description}")
+        print(f"Artifact: {description}")
         if metadata:
             print(f"   Metadata: {metadata}")
 
@@ -70,53 +70,32 @@ Q7 = "Count endangered cat species by rank, status and threat level"
 
 async def test_find_occurrence_records():
     context = SimpleInMemoryContext()
-    await find_occurrence_records_run(
-        context=context,
-        request=Q2,
-        params=None
-    )
+    await find_occurrence_records_run(context=context, request=Q2)
 
 
 async def test_count_occurrence_records():
     context = SimpleInMemoryContext()
-    await count_occurrence_records_run(
-        context=context,
-        request=Q4,
-        params=None
-    )
+    await count_occurrence_records_run(context=context, request=Q4)
 
 
-async def test_search_species():
+async def test_find_species_records():
     context = SimpleInMemoryContext()
-    
-    
-    await search_species_run(
-        context=context,
-        request=Q6,
-        params=None
-    )
+
+    await find_species_records_run(context=context, request=Q6)
 
 
 async def test_count_species_records():
-    
-    
     context = SimpleInMemoryContext()
-    
-    
-    await count_species_records_run(
-        context=context,
-        request=Q7,
-        params=None
-    )
+    await count_species_records_run(context=context, request=Q7)
 
 
 async def run_all_tests():
     try:
         await test_find_occurrence_records()
         await test_count_occurrence_records()
-        await test_search_species()
+        await test_find_species_records()
         await test_count_species_records()
-        
+
     except Exception as e:
         print(f"Test failed with error: {e}")
         import traceback
