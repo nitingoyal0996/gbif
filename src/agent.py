@@ -31,18 +31,18 @@ class GBIFAgent(IChatBioAgent):
         )
 
     @override
-    async def run(self, context: ResponseContext, request: str, entrypoint: str, params: Optional[BaseModel]):
+    async def run(self, context: ResponseContext, request: str, entrypoint: str):
         logger.info(f"AGENT | Entrypoint={entrypoint} | Request={request}")
         try:
             match entrypoint:
                 case find_occurrence_records.entrypoint.id:
-                    await find_occurrence_records.run(context, request, params=params)
+                    await find_occurrence_records.run(context, request)
                 case count_occurence_records.entrypoint.id:
-                    await count_occurence_records.run(context, request, params=params)
+                    await count_occurence_records.run(context, request)
                 case find_species_records.entrypoint.id:
-                    await find_species_records.run(context, request, params=params)
+                    await find_species_records.run(context, request)
                 case count_species_records.entrypoint.id:
-                    await count_species_records.run(context, request, params=params)
+                    await count_species_records.run(context, request)
                 case _:
                     error_msg = f"Unknown entrypoint: {entrypoint}"
                     logger.error(f"AGENT_ERROR | {error_msg}")

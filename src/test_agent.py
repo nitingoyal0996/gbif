@@ -1,11 +1,8 @@
 """Test"""
 import asyncio
 from typing import List
-from src.entrypoints.find_occurrence_records import run as find_occurrence_records_run
-from src.entrypoints.count_occurence_records import run as count_occurrence_records_run
-from src.entrypoints.find_species_records import run as find_species_records_run
-from src.entrypoints.count_species_records import run as count_species_records_run
 from ichatbio.agent_response import ResponseContext
+from src.agent import GBIFAgent
 
 
 class SimpleInMemoryContext(ResponseContext):
@@ -70,23 +67,26 @@ Q7 = "Count endangered cat species by rank, status and threat level"
 
 async def test_find_occurrence_records():
     context = SimpleInMemoryContext()
-    await find_occurrence_records_run(context=context, request=Q2)
+    agent = GBIFAgent()
+    await agent.run(context=context, request=Q2, entrypoint="find_occurrence_records")
 
 
 async def test_count_occurrence_records():
     context = SimpleInMemoryContext()
-    await count_occurrence_records_run(context=context, request=Q4)
+    agent = GBIFAgent()
+    await agent.run(context=context, request=Q4, entrypoint="count_occurrence_records")
 
 
 async def test_find_species_records():
     context = SimpleInMemoryContext()
-
-    await find_species_records_run(context=context, request=Q6)
+    agent = GBIFAgent()
+    await agent.run(context=context, request=Q6, entrypoint="find_species_records")
 
 
 async def test_count_species_records():
     context = SimpleInMemoryContext()
-    await count_species_records_run(context=context, request=Q7)
+    agent = GBIFAgent()
+    await agent.run(context=context, request=Q7, entrypoint="count_species_records")
 
 
 async def run_all_tests():
