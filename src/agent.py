@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from src.entrypoints import (
     find_occurrence_records,
     count_occurence_records,
-    search_species,
+    find_species_records,
     count_species_records,
 )
 from src.log import logger
@@ -25,7 +25,7 @@ class GBIFAgent(IChatBioAgent):
             entrypoints=[
                 find_occurrence_records.entrypoint,
                 count_occurence_records.entrypoint,
-                search_species.entrypoint,
+                find_species_records.entrypoint,
                 count_species_records.entrypoint,
             ],
         )
@@ -39,8 +39,8 @@ class GBIFAgent(IChatBioAgent):
                     await find_occurrence_records.run(context, request, params=params)
                 case count_occurence_records.entrypoint.id:
                     await count_occurence_records.run(context, request, params=params)
-                case search_species.entrypoint.id:
-                    await search_species.run(context, request, params=params)
+                case find_species_records.entrypoint.id:
+                    await find_species_records.run(context, request, params=params)
                 case count_species_records.entrypoint.id:
                     await count_species_records.run(context, request, params=params)
                 case _:
