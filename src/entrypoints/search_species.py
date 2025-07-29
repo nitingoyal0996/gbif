@@ -6,6 +6,7 @@ Provides full-text search over name usages covering scientific and vernacular na
 species descriptions, distribution and classification data.
 """
 import uuid
+from typing import Optional
 
 from ichatbio.agent_response import ResponseContext, IChatBioAgentProcess
 from ichatbio.types import AgentEntrypoint
@@ -13,6 +14,8 @@ from ichatbio.types import AgentEntrypoint
 from src.api import GbifApi
 from src.models.entrypoints import GBIFSpeciesSearchParams
 from src.log import with_logging
+
+from src.parser import parse, GBIFPath
 
 
 description = """
@@ -30,13 +33,13 @@ Search examples:
 entrypoint = AgentEntrypoint(
     id="search_species",
     description="Search species name usages",
-    parameters=GBIFSpeciesSearchParams
+    parameters=GBIFSpeciesSearchParams,
 )
 
 
 @with_logging("search_species")
 async def run(
-    context: ResponseContext, request: str, params: GBIFSpeciesSearchParams
+    context: ResponseContext, request: str, params: Optional[GBIFSpeciesSearchParams]
 ):
     """
     Executes the species search entrypoint. Searches for species name usages using the provided
@@ -44,6 +47,9 @@ async def run(
     """
     # Generate a unique agent log ID for this run for logging purposes
     AGENT_LOG_ID = f"SEARCH_SPECIES_{str(uuid.uuid4())[:6]}"
+
+    await context.reply("Parsing request parameters using LLM...")
+    params = await parse(request, GBIFPath.SPECIES, GBIFSpeciesSearchParams)
 
     async with context.begin_process("Searching GBIF species database") as process:
         process: IChatBioAgentProcess

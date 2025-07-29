@@ -5,6 +5,7 @@ This entrypoint counts species name usage records and provides faceted statistic
 Provides statistical breakdowns of taxonomic data by various classification and status dimensions.
 """
 import uuid
+from typing import Optional
 
 from ichatbio.agent_response import ResponseContext, IChatBioAgentProcess
 from ichatbio.types import AgentEntrypoint
@@ -12,7 +13,7 @@ from ichatbio.types import AgentEntrypoint
 from src.api import GbifApi
 from src.models.entrypoints import GBIFSpeciesFacetsParams
 from src.log import with_logging
-
+from src.parser import parse, GBIFPath
 
 description = """
 Count and analyze species name usage records with statistical breakdowns by taxonomic, conservation, and nomenclatural dimensions.
@@ -36,13 +37,13 @@ Common facet dimensions:
 entrypoint = AgentEntrypoint(
     id="count_species_records",
     description="Count species records with faceted statistics",
-    parameters=GBIFSpeciesFacetsParams
+    parameters=GBIFSpeciesFacetsParams,
 )
 
 
 @with_logging("count_species_records")
 async def run(
-    context: ResponseContext, request: str, params: GBIFSpeciesFacetsParams
+    context: ResponseContext, request: str, params: Optional[GBIFSpeciesFacetsParams]
 ):
     """
     Executes the species counting entrypoint. Counts species name usage records using the provided
@@ -50,6 +51,9 @@ async def run(
     """
     # Generate a unique agent log ID for this run for logging purposes
     AGENT_LOG_ID = f"COUNT_SPECIES_RECORDS_{str(uuid.uuid4())[:6]}"
+
+    await context.reply("Parsing request parameters using LLM...")
+    params = await parse(request, GBIFPath.SPECIES, GBIFSpeciesFacetsParams)
 
     async with context.begin_process("Counting GBIF species records with facets") as process:
         process: IChatBioAgentProcess

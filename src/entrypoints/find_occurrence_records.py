@@ -13,7 +13,7 @@ from ichatbio.types import AgentEntrypoint
 from src.api import GbifApi
 from src.models.entrypoints import GBIFOccurrenceSearchParams
 from src.log import with_logging
-# from src.llm_parse import parse_gbif_occurrence_search_request
+from src.parser import parse, GBIFPath
 
 
 description = """
@@ -37,13 +37,13 @@ Note:
 entrypoint = AgentEntrypoint(
     id="find_occurrence_records",
     description="Find occurrence records",
-    parameters=GBIFOccurrenceSearchParams
+    parameters=GBIFOccurrenceSearchParams,
 )
 
 
 @with_logging("find_occurrence_records")
 async def run(
-    context: ResponseContext, request: str, params: GBIFOccurrenceSearchParams
+    context: ResponseContext, request: str, params: Optional[GBIFOccurrenceSearchParams]
 ):
     """
     Executes the occurrence search entrypoint. Searches for occurrence records using the provided
@@ -52,9 +52,8 @@ async def run(
     # Generate a unique agent log ID for this run for logging purposes
     AGENT_LOG_ID = f"FIND_OCCURRENCE_RECORDS_{str(uuid.uuid4())[:6]}"
 
-    # await context.reply("Parsing request parameters using LLM...")
-    # params = await parse_gbif_occurrence_search_request(request)
-    # params = GBIFOccurrenceSearchParams(**params)
+    await context.reply("Parsing request parameters using LLM...")
+    params = await parse(request, GBIFPath.OCCURRENCE, GBIFOccurrenceSearchParams)
 
     async with context.begin_process("Searching GBIF occurrence records") as process:
         process: IChatBioAgentProcess
