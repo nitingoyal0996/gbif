@@ -16,17 +16,7 @@ from src.parser import parse, GBIFPath
 
 
 description = """
-Searches for species occurrence records using the GBIF occurrences API. Returns the total number
-of records found, the URL constructed to query the GBIF occurrences API, and a URL to view
-the results on the GBIF web portal.
-
-Parameters include search criteria such as:
-- Scientific names, common names, or full-text search
-- Geographic filters (country, continent, coordinates)
-- Temporal filters (year, month, date ranges)
-- Taxonomic filters (kingdom, phylum, class, etc.)
-- Record type filters (basis of record, occurrence status)
-- Pagination parameters (limit, offset)
+This entrypoint works against the GBIF Occurrence Store, which handles occurrence records. This entrypoint provides services for searching occurrence records that have been indexed by GBIF.
 
 Note:
 - Year is a 4 digit year. A year of 98 will be interpreted as AD 98. Supports range queries. For instance: year='2020,2023' will return all records from 2020 and 2023.

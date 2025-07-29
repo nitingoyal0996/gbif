@@ -19,6 +19,8 @@ from src.parser import parse, GBIFPath
 
 
 description = """
+This works against the GBIF Occurrence Store, which handles occurrence records. This entrypoint provides services for counting occurrence records with faceted statistics that have been indexed by GBIF.
+
 Counts occurrence records and provides faceted statistics using the GBIF occurrences API. Returns the total
 number of records found, breakdown by specified facets, the URL constructed to query the GBIF occurrences API,
 and a URL to view the results on the GBIF web portal.

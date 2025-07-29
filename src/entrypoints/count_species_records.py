@@ -16,22 +16,7 @@ from src.log import with_logging
 from src.parser import parse, GBIFPath
 
 description = """
-Count and analyze species name usage records with statistical breakdowns by taxonomic, conservation, and nomenclatural dimensions.
-
-Examples of what you can discover:
-• "How many species are in each taxonomic rank?" → facet=["rank"] 
-• "What's the conservation status breakdown for mammals?" → q="mammalia", facet=["threat"]
-• "Which datasets contribute the most marine species?" → habitat="MARINE", facet=["datasetKey"]
-• "Compare taxonomic vs nomenclatural status distributions" → facet=["status", "nomenclaturalStatus"]
-• "How many accepted vs synonym names by rank?" → facet=["rank", "status"]
-
-Common facet dimensions:
-- rank: Species, genus, family, order, etc.
-- status: Accepted, synonym, doubtful names
-- habitat: Marine, freshwater, terrestrial
-- threat: IUCN conservation status categories
-- nameType: Scientific, hybrid, cultivar names
-- datasetKey: Contributing taxonomic datasets
+This entrypoint works against data kept in the GBIF Checklist Bank which taxonomically indexes all registered checklist datasets in the GBIF network. And it provides services for counting species name usage records with statistical breakdowns by taxonomic, conservation, and nomenclatural dimensions.
 """
 
 entrypoint = AgentEntrypoint(

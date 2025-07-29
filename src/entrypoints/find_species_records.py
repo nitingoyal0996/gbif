@@ -19,12 +19,7 @@ from src.parser import parse, GBIFPath
 
 
 description = """
-Search species name usages across scientific names, vernacular names, descriptions, and taxonomic classifications. Results ordered by relevance.
-
-Search examples:
-• Find Puma concolor species records
-• Find endangered cat species by rank, status and threat level
-• Find marine mammals species records
+This entrypoint works against data kept in the GBIF Checklist Bank which taxonomically indexes all registered checklist datasets in the GBIF network. And it provides services for full-text search of name usages covering the scientific and vernacular names, the species description, distribution and the entire classification across all name usages of all or some checklists. Results are ordered by relevance as this search usually returns a lot of results.
 """
 
 entrypoint = AgentEntrypoint(
