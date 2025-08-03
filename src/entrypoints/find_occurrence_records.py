@@ -40,7 +40,9 @@ async def run(context: ResponseContext, request: str):
     AGENT_LOG_ID = f"FIND_OCCURRENCE_RECORDS_{str(uuid.uuid4())[:6]}"
 
     await context.reply("Parsing request parameters using LLM...")
-    params = await parse(request, GBIFPath.OCCURRENCE, GBIFOccurrenceSearchParams)
+    response = await parse(request, GBIFPath.OCCURRENCE, GBIFOccurrenceSearchParams)
+    params = response.search_parameters
+    description = response.artifact_description
 
     async with context.begin_process("Searching GBIF occurrence records") as process:
         process: IChatBioAgentProcess
@@ -63,7 +65,7 @@ async def run(context: ResponseContext, request: str):
             await process.log(f"Query successful, found {total} records.")
             await process.create_artifact(
                 mimetype="application/json",
-                description=f"Raw JSON for {returned} GBIF occurrence records",
+                description=description,
                 uris=[api_url],
                 metadata={
                     "data_source": "GBIF",

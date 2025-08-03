@@ -36,7 +36,9 @@ async def run(context: ResponseContext, request: str):
     AGENT_LOG_ID = f"COUNT_SPECIES_RECORDS_{str(uuid.uuid4())[:6]}"
 
     await context.reply("Parsing request parameters using LLM...")
-    params = await parse(request, GBIFPath.SPECIES, GBIFSpeciesFacetsParams)
+    response = await parse(request, GBIFPath.SPECIES, GBIFSpeciesFacetsParams)
+    params = response.search_parameters
+    description = response.artifact_description
 
     async with context.begin_process("Counting GBIF species records with facets") as process:
         process: IChatBioAgentProcess
@@ -61,7 +63,7 @@ async def run(context: ResponseContext, request: str):
             )
             await process.create_artifact(
                 mimetype="application/json",
-                description=f"Raw JSON for GBIF species statistics with {len(facets)} facet groups",
+                description=description,
                 uris=[api_url],
                 metadata={
                     "data_source": "GBIF",

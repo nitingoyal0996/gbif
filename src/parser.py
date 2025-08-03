@@ -1,8 +1,15 @@
 import datetime
 import instructor
+
 from enum import Enum
-from typing import TypeVar, Type
-from src.resources.prompt import SYSTEM_PROMPT, OCCURRENCE_PARAMETER_GUIDELINES, SPECIES_PARAMETER_GUIDELINES
+from pydantic import BaseModel, Field, create_model
+from typing import Type
+
+from src.resources.prompt import (
+    SYSTEM_PROMPT,
+    OCCURRENCE_PARAMETER_GUIDELINES,
+    SPECIES_PARAMETER_GUIDELINES,
+)
 
 from dotenv import load_dotenv
 
@@ -22,15 +29,34 @@ PARAMETER_GUIDELINES = {
 
 CURRENT_DATE = datetime.datetime.now().strftime("%B %d, %Y")
 
-T = TypeVar("T")
+def create_response_model(parameter_model: Type[BaseModel]) -> Type[BaseModel]:
+    return create_model(
+        "LLMResponse",
+        search_parameters=(
+            parameter_model,
+            Field(description="The search parameters for the API"),
+        ),
+        artifact_description=(
+            str,
+            Field(
+                description="A concise characterization of the retrieved record statistics",
+                examples=[
+                    "Per-country record counts for species Rattus rattus",
+                    "Per-species record counts for records created in 2025",
+                ],
+            ),
+        ),
+        __base__=BaseModel,
+    )
 
 
 async def parse(
     request: str,
     path: GBIFPath,
-    response_model: Type[T],
-) -> Type[T]:
+    parameters_model: Type[BaseModel],
+) -> Type[BaseModel]:
     parameter_guidelines = PARAMETER_GUIDELINES[path]
+    response_model = create_response_model(parameters_model)
 
     openai_client = instructor.from_provider(
         "openai/gpt-4.1",

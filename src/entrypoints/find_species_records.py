@@ -6,7 +6,6 @@ Provides full-text search over name usages covering scientific and vernacular na
 species descriptions, distribution and classification data.
 """
 import uuid
-from typing import Optional
 
 from ichatbio.agent_response import ResponseContext, IChatBioAgentProcess
 from ichatbio.types import AgentEntrypoint
@@ -39,7 +38,9 @@ async def run(context: ResponseContext, request: str):
     AGENT_LOG_ID = f"FIND_SPECIES_RECORDS_{str(uuid.uuid4())[:6]}"
 
     await context.reply("Parsing request parameters using LLM...")
-    params = await parse(request, GBIFPath.SPECIES, GBIFSpeciesSearchParams)
+    response = await parse(request, GBIFPath.SPECIES, GBIFSpeciesSearchParams)
+    params = response.search_parameters
+    description = response.artifact_description
 
     async with context.begin_process("Searching GBIF species database") as process:
         process: IChatBioAgentProcess
@@ -62,13 +63,12 @@ async def run(context: ResponseContext, request: str):
             await process.log(f"Query successful, found {total} species records.")
             await process.create_artifact(
                 mimetype="application/json",
-                description=f"Raw JSON for {returned} GBIF species name usage records",
+                description=description,
                 uris=[api_url],
                 metadata={
                     "data_source": "GBIF",
                     "record_count": returned,
                     "total_matches": total,
-                    "search_type": "species_name_usage",
                     "portal_url": gbif_api.build_portal_url(api_url),
                 },
             )
