@@ -13,6 +13,7 @@ from src.models.entrypoints import GBIFSpeciesTaxonomicParams
 from src.models.responses.species import NameUsage, PagingResponseNameUsage
 from src.log import with_logging
 from src.parser import parse, GBIFPath
+from src.log import logger
 
 
 entrypoint = AgentEntrypoint(
@@ -92,7 +93,7 @@ def __extract_taxonomic_data(results: dict) -> dict:
                 "is_extinct": basic.isExtinct,
             }
         except Exception as e:
-            print(f"Error parsing basic info {e}; adding raw results")
+            logger.Error(f"Error parsing basic info {e}; adding raw results")
             taxonomic_data["basic_info"] = results["basic"]
 
     if "parents" in results and "error" not in results["parents"]:
@@ -107,7 +108,7 @@ def __extract_taxonomic_data(results: dict) -> dict:
                 for parent in parents
             ]
         except Exception as e:
-            print(f"Error parsing parents {e}; adding raw results")
+            logger.Error(f"Error parsing parents {e}; adding raw results")
             taxonomic_data["taxonomic_hierarchy"] = results["parents"]
 
     if "synonyms" in results and "error" not in results["synonyms"]:
@@ -125,7 +126,7 @@ def __extract_taxonomic_data(results: dict) -> dict:
                 ],
             }
         except Exception as e:
-            print(f"Error parsing synonyms {e}; adding raw results")
+            logger.Error(f"Error parsing synonyms {e}; adding raw results")
             taxonomic_data["synonyms"] = results["synonyms"]
 
     if "children" in results and "error" not in results["children"]:
@@ -143,7 +144,7 @@ def __extract_taxonomic_data(results: dict) -> dict:
                 ],
             }
         except Exception as e:
-            print(f"Error parsing children {e}; adding raw results")
+            logger.Error(f"Error parsing children {e}; adding raw results")
             taxonomic_data["children"] = results["children"]
 
     return taxonomic_data
