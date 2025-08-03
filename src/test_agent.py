@@ -64,37 +64,85 @@ Q4 = "Count the records of Apis mellifera colleceted between yearly 2020 and 202
 Q5 = 'Find oak species and related taxa'
 Q6 = 'Find endangered cat species by rank, status and threat level'
 Q7 = "Count endangered cat species by rank, status and threat level"
+# ---- taxonomic information queries ----
+Q8 = "Get more information for species with usage key 5231190"
+Q9 = "Retrieve children species of taxon-id 2476674"
+Q10 = "Show me the taxonomic hierarchy and species profiles for Quercus robur (usage key 2877951)"
 
 async def test_find_occurrence_records():
     context = SimpleInMemoryContext()
     agent = GBIFAgent()
-    await agent.run(context=context, request=Q2, entrypoint="find_occurrence_records")
+    await agent.run(
+        context=context, request=Q1, params=None, entrypoint="find_occurrence_records"
+    )
 
 
 async def test_count_occurrence_records():
     context = SimpleInMemoryContext()
     agent = GBIFAgent()
-    await agent.run(context=context, request=Q4, entrypoint="count_occurrence_records")
+    await agent.run(
+        context=context, request=Q4, params=None, entrypoint="count_occurrence_records"
+    )
 
 
 async def test_find_species_records():
     context = SimpleInMemoryContext()
     agent = GBIFAgent()
-    await agent.run(context=context, request=Q6, entrypoint="find_species_records")
+    await agent.run(
+        context=context, request=Q5, params=None, entrypoint="find_species_records"
+    )
 
 
 async def test_count_species_records():
     context = SimpleInMemoryContext()
     agent = GBIFAgent()
-    await agent.run(context=context, request=Q7, entrypoint="count_species_records")
+    await agent.run(
+        context=context, request=Q7, params=None, entrypoint="count_species_records"
+    )
+
+
+async def test_species_taxonomic_information():
+    context = SimpleInMemoryContext()
+    agent = GBIFAgent()
+    await agent.run(
+        context=context,
+        request=Q8,
+        params=None,
+        entrypoint="species_taxonomic_information",
+    )
+
+
+async def test_species_taxonomic_information_comprehensive():
+    context = SimpleInMemoryContext()
+    agent = GBIFAgent()
+    await agent.run(
+        context=context,
+        request=Q9,
+        params=None,
+        entrypoint="species_taxonomic_information",
+    )
+
+
+async def test_species_taxonomic_information_hierarchy():
+    context = SimpleInMemoryContext()
+    agent = GBIFAgent()
+    await agent.run(
+        context=context,
+        request=Q10,
+        params=None,
+        entrypoint="species_taxonomic_information",
+    )
 
 
 async def run_all_tests():
     try:
-        await test_find_occurrence_records()
-        await test_count_occurrence_records()
-        await test_find_species_records()
-        await test_count_species_records()
+        # await test_find_occurrence_records()
+        # await test_count_occurrence_records()
+        # await test_find_species_records()
+        # await test_count_species_records()
+        # await test_species_taxonomic_information()
+        # await test_species_taxonomic_information_comprehensive()
+        await test_species_taxonomic_information_hierarchy()
 
     except Exception as e:
         print(f"Test failed with error: {e}")
