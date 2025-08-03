@@ -519,3 +519,55 @@ class GBIFSpeciesFacetsParams(GBIFSpeciesSearchParams):
         description="Starting offset for facet value results. Use with facetLimit for paginating through facet values when there are many distinct values.",
         examples=[0, 50, 100],
     )
+
+
+class GBIFSpeciesTaxonomicParams(ProductionBaseModel):
+    """Parameters for GBIF species taxonomic information - retrieves comprehensive taxonomic data for a specific species"""
+
+    # Required parameter - enforced usageKey
+    usageKey: int = Field(
+        ...,
+        description="The GBIF usage key (taxon key) for the species. This is a required parameter that uniquely identifies the species in the GBIF backbone.",
+        examples=[5231190, 2476674, 2877951],
+    )
+
+    # Optional parameters for controlling data retrieval
+    includeSynonyms: Optional[bool] = Field(
+        True,
+        description="Whether to include synonyms in the response. Synonyms are alternative scientific names for the same taxon.",
+        examples=[True, False],
+    )
+
+    includeChildren: Optional[bool] = Field(
+        True,
+        description="Whether to include child taxa (subspecies, varieties, etc.) in the response.",
+        examples=[True, False],
+    )
+
+    includeParents: Optional[bool] = Field(
+        True,
+        description="Whether to include the complete taxonomic hierarchy (parents) in the response.",
+        examples=[True, False],
+    )
+
+    language: Optional[str] = Field(
+        "en",
+        description="Language code for vernacular names and descriptions. Uses ISO 639-1 two-letter codes.",
+        examples=["en", "es", "fr", "de", "zh"],
+    )
+
+    # Pagination for endpoints that support it
+    limit: Optional[int] = Field(
+        20,
+        ge=1,
+        le=100,
+        description="Maximum number of results to return for paginated endpoints (synonyms, children, etc.).",
+        examples=[10, 20, 50, 100],
+    )
+
+    offset: Optional[int] = Field(
+        0,
+        ge=0,
+        description="Offset for pagination in paginated endpoints.",
+        examples=[0, 20, 40],
+    )

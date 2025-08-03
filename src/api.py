@@ -14,6 +14,7 @@ from src.models.entrypoints import (
     GBIFOccurrenceFacetsParams,
     GBIFSpeciesSearchParams,
     GBIFSpeciesFacetsParams,
+    GBIFSpeciesTaxonomicParams,
 )
 
 
@@ -77,6 +78,27 @@ class GbifApi:
         query_string = urlencode(api_params, doseq=True)
         return f"{self.base_url}/species/search?{query_string}"
 
+    def build_species_taxonomic_urls(
+        self, params: GBIFSpeciesTaxonomicParams
+    ) -> Dict[str, str]:
+        usage_key = params.usageKey
+        base_url = f"{self.base_url}/species/{usage_key}"
+        urls = {
+            "basic": f"{base_url}",
+            "parsed_name": f"{base_url}/name",
+        }
+        if params.includeParents:
+            urls["parents"] = f"{base_url}/parents"
+        if params.includeChildren:
+            urls["children"] = (
+                f"{base_url}/children?limit={params.limit}&offset={params.offset}"
+            )
+        if params.includeSynonyms:
+            urls["synonyms"] = (
+                f"{base_url}/synonyms?limit={params.limit}&offset={params.offset}"
+            )
+        return urls
+
     def build_portal_url(self, api_url: str) -> str:
         if "/occurrence/search?" in api_url:
             return api_url.replace(self.base_url, self.portal_url)
@@ -92,6 +114,23 @@ class GbifApi:
     async def execute_request(self, url: str) -> Dict[str, Any]:
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, self.execute_sync_request, url)
+
+    async def execute_multiple_requests(self, urls: Dict[str, str]) -> Dict[str, Any]:
+        """Execute multiple API requests concurrently and return combined results."""
+        tasks = []
+        for endpoint_name, url in urls.items():
+            tasks.append(self.execute_request(url))
+
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        combined_results = {}
+        for endpoint_name, result in zip(urls.keys(), results):
+            if isinstance(result, Exception):
+                combined_results[endpoint_name] = {"error": str(result)}
+            else:
+                combined_results[endpoint_name] = result
+
+        return combined_results
 
     def format_response_summary(self, response_data: Dict[str, Any]) -> str:
         if not response_data:
