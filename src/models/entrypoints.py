@@ -19,6 +19,9 @@ from .enums.species_parameters import (
     ThreatStatusEnum,
     NameTypeEnum,
     OriginEnum,
+    TypeStatusEnum,
+    NomenclaturalStatusEnum,
+    IssueEnum,
 )
 
 
@@ -208,10 +211,14 @@ class GBIFOccurrenceBaseParams(ProductionBaseModel):
         examples=[["Allison"], ["Dr. Smith", "Prof. Johnson"]],
     )
 
-    typeStatus: Optional[List[str]] = Field(
+    typeStatus: Optional[List[TypeStatusEnum]] = Field(
         None,
         description="Nomenclatural type (type status, typified scientific name, publication) applied to the subject.",
-        examples=[["HOLOTYPE"], ["PARATYPE", "SYNTYPE"], ["LECTOTYPE", "NEOTYPE"]],
+        examples=[
+            [TypeStatusEnum.HOLOTYPE],
+            [TypeStatusEnum.PARATYPE, TypeStatusEnum.SYNTYPE],
+            [TypeStatusEnum.LECTOTYPE, TypeStatusEnum.NEOTYPE],
+        ],
     )
 
     isSequenced: Optional[bool] = Field(
@@ -417,18 +424,18 @@ class GBIFSpeciesSearchParams(ProductionBaseModel):
         ],
     )
 
-    nomenclaturalStatus: Optional[str] = Field(
+    nomenclaturalStatus: Optional[NomenclaturalStatusEnum] = Field(
         None,
         description="Filters by nomenclatural status according to the relevant nomenclatural code. Important for understanding the validity and legitimacy of scientific names.",
         examples=[
-            "LEGITIMATE",
-            "VALIDLY_PUBLISHED",
-            "NEW_COMBINATION",
-            "REPLACEMENT",
-            "CONSERVED",
-            "ILLEGITIMATE",
-            "INVALID",
-            "REJECTED",
+            NomenclaturalStatusEnum.LEGITIMATE,
+            NomenclaturalStatusEnum.VALIDLY_PUBLISHED,
+            NomenclaturalStatusEnum.NEW_COMBINATION,
+            NomenclaturalStatusEnum.REPLACEMENT,
+            NomenclaturalStatusEnum.CONSERVED,
+            NomenclaturalStatusEnum.ILLEGITIMATE,
+            NomenclaturalStatusEnum.INVALID,
+            NomenclaturalStatusEnum.REJECTED,
         ],
     )
 
@@ -443,15 +450,15 @@ class GBIFSpeciesSearchParams(ProductionBaseModel):
         ],
     )
 
-    issue: Optional[str] = Field(
+    issue: Optional[IssueEnum] = Field(
         None,
         description="Filters by specific data quality issues identified during GBIF's indexing process. Useful for data quality assessment and cleanup.",
         examples=[
-            "BACKBONE_MATCH_NONE",
-            "BACKBONE_MATCH_FUZZY",
-            "ACCEPTED_NAME_MISSING",
-            "CLASSIFICATION_RANK_ORDER_INVALID",
-            "TAXONOMIC_STATUS_MISMATCH",
+            IssueEnum.BACKBONE_MATCH_NONE,
+            IssueEnum.BACKBONE_MATCH_FUZZY,
+            IssueEnum.ACCEPTED_NAME_MISSING,
+            IssueEnum.CLASSIFICATION_RANK_ORDER_INVALID,
+            IssueEnum.TAXONOMIC_STATUS_MISMATCH,
         ],
     )
 
