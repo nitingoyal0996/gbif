@@ -2,29 +2,39 @@
 GBIF Species Taxonomic Information Entrypoint
 
 This entrypoint retrieves comprehensive taxonomic information for a specific species
-using its GBIF usage key. Provides detailed taxonomic classification, synonyms,
+using its GBIF species identifier. Provides detailed taxonomic classification, synonyms,
 children taxa, and species profiles.
 """
+
 from ichatbio.agent_response import ResponseContext, IChatBioAgentProcess
 from ichatbio.types import AgentEntrypoint
 
 from src.api import GbifApi
-from src.models.entrypoints import GBIFSpeciesTaxonomicParams
+from src.models.entrypoints import GBIFSpeciesSearchParams, GBIFSpeciesTaxonomicParams
+from src.models.enums.species_parameters import TaxonomicStatusEnum, TaxonomicRankEnum
 from src.models.responses.species import NameUsage, PagingResponseNameUsage
 from src.log import with_logging
 from src.parser import parse, GBIFPath
 from src.log import logger
 
+from pydantic import BaseModel, Field
+from typing import List, Optional
+
+import instructor
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 entrypoint = AgentEntrypoint(
     id="species_taxonomic_information",
     name="Species Taxonomic Information",
-    description="Retrieve comprehensive taxonomic information for a species using its GBIF usage key",
+    description="Retrieve comprehensive taxonomic information for a species using its GBIF id",
     examples=[
-        "Get taxonomic information for species with usage key 5231190",
+        "Get taxonomic information for species with id 5231190",
         "Show taxonomic hierarchy and synonyms for species 2476674",
-        "Retrieve taxonomic data for species key 2877951 including children taxa"
-    ]
+        "Retrieve taxonomic data for species id 2877951 including children taxa",
+    ],
 )
 
 
@@ -39,13 +49,25 @@ async def run(context: ResponseContext, request: str):
             return
 
         params = response.search_parameters
-        await process.log(f"Parameters: {params.model_dump()}")
-        if not getattr(params, "usageKey", None):
-            await context.reply("Usage key is required to retrieve taxonomic information.")
-            return
-        await process.log(f"Processing request for species with usage key: {params.usageKey}")
-
         gbif_api = GbifApi()
+
+        await process.log(f"Parameters: {params.model_dump()}")
+        if not getattr(params, "key", None) and not getattr(params, "name", None):
+            await context.reply(
+                "Species id or name is required to retrieve taxonomic information."
+            )
+            return
+
+        if not getattr(params, "key", None):
+            await process.log(
+                f"No species id found, searching for species by name: {params.name}"
+            )
+            species_key = await __search_species_by_name(
+                gbif_api, request, params.name, process
+            )
+            # Create a new params object with the updated key since the original is frozen
+            params = params.model_copy(update={"key": species_key})
+
         urls = gbif_api.build_species_taxonomic_urls(params)
 
         await process.log(f"Querying {urls} GBIF endpoints to gather taxonomic information...")
@@ -58,10 +80,10 @@ async def run(context: ResponseContext, request: str):
             await process.create_artifact(
                 mimetype="application/json",
                 description=response.artifact_description,
-                uris=[f"https://api.gbif.org/v1/species/{params.usageKey}"],
+                uris=[f"https://api.gbif.org/v1/species/{params.key}"],
                 metadata={
                     "data_source": "GBIF",
-                    "usage_key": params.usageKey,
+                    "key": params.key,
                     "taxonomic_data": taxonomic_data,
                 },
             )
@@ -148,3 +170,91 @@ def __extract_taxonomic_data(results: dict) -> dict:
             taxonomic_data["children"] = results["children"]
 
     return taxonomic_data
+
+
+class SpeciesMatch(BaseModel):
+    key: int
+    scientificName: str
+    canonicalName: Optional[str] = None
+    rank: Optional[str] = None
+    kingdom: Optional[str] = None
+    phylum: Optional[str] = None
+    class_: Optional[str] = Field(None, alias="class")
+    order: Optional[str] = None
+    family: Optional[str] = None
+    genus: Optional[str] = None
+    isExtinct: Optional[bool] = None
+
+
+async def __search_species_by_name(
+    api: GbifApi, user_query: str, name: str, process: IChatBioAgentProcess
+) -> int:
+    url = api.build_species_search_url(
+        GBIFSpeciesSearchParams(
+            q=name, status=TaxonomicStatusEnum.ACCEPTED, rank=TaxonomicRankEnum.SPECIES
+        )
+    )
+    results = await api.execute_request(url)
+    await process.log(
+        f"Found {len(results.get('results', []))} matches for species name: {name}"
+    )
+
+    species_matches: List[SpeciesMatch] = []
+    for result in results.get("results", []):
+        species_matches.append(
+            SpeciesMatch(
+                key=result.get("key"),
+                scientificName=result.get("scientificName"),
+                canonicalName=result.get("canonicalName"),
+                rank=result.get("rank"),
+                kingdom=result.get("kingdom"),
+                phylum=result.get("phylum"),
+                class_=result.get("class"),
+                order=result.get("order"),
+                family=result.get("family"),
+                genus=result.get("genus"),
+                isExtinct=result.get("isExtinct"),
+            )
+        )
+
+    if not species_matches:
+        raise ValueError(f"No species matches found for name: {name}")
+
+    # add artifact with species matches
+    await process.create_artifact(
+        mimetype="application/json",
+        description=f"Species matches for {name}",
+        uris=[f"https://api.gbif.org/v1/species/{name}"],
+        metadata={"data_source": "GBIF", "species_matches": species_matches},
+    )
+
+    best_match = await __find_best_match(species_matches, user_query)
+    await process.log(f"Selected match: {best_match.model_dump_json()}")
+    return best_match.key
+
+
+async def __find_best_match(
+    species_matches: List[SpeciesMatch], user_query: str
+) -> SpeciesMatch:
+
+    client = instructor.from_provider(
+        "openai/gpt-4.1",
+        async_client=True,
+    )
+
+    response = await client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {
+                "role": "system",
+                "content": "You are a helpful biodiversity researcher assistant that finds the best match for a species name for the user query. You will be given a user query and a dictionary of species details to keys. You will need to return the key of the best match.",
+            },
+            {
+                "role": "user",
+                "content": f"User query: {user_query}\n\nSpecies name to key: {species_matches}",
+            },
+        ],
+        response_model=SpeciesMatch,
+    )
+
+    return response
