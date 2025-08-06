@@ -32,6 +32,8 @@ Other optional parameters:
 - limit: Use when the request specifies a number of results to return (default 20, max 100)
 - offset: Use for pagination when the request mentions "more results" or "next page"
 
+Important: If the request mentions a species by name but doesn't provide a usage key, respond and ask for clarification.
+
 Examples:
 - "Retrieve children species of taxon-id 2476674" → includeChildren=True, includeSynonyms=False, includeParents=False
 - "Get taxonomic information for species 5231190" → includeChildren=False, includeSynonyms=False, includeParents=False (basic info only)

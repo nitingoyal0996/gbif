@@ -531,11 +531,16 @@ class GBIFSpeciesFacetsParams(GBIFSpeciesSearchParams):
 class GBIFSpeciesTaxonomicParams(ProductionBaseModel):
     """Parameters for GBIF species taxonomic information - retrieves comprehensive taxonomic data for a specific species"""
 
-    # Required parameter - enforced usageKey
-    usageKey: int = Field(
-        ...,
-        description="The GBIF usage key (taxon key) for the species. This is a required parameter that uniquely identifies the species in the GBIF backbone.",
+    key: Optional[int] = Field(
+        None,
+        description="The GBIF key (taxon key) for the species. This is a required parameter that uniquely identifies the species in the GBIF backbone.",
         examples=[5231190, 2476674, 2877951],
+    )
+
+    name: Optional[str] = Field(
+        None,
+        description="The scientific name of the species. This is a required parameter that uniquely identifies the species in the GBIF backbone.",
+        examples=["Panthera onca", "jaguar", "Quercus robur", "oak tree"],
     )
 
     # Optional parameters for controlling data retrieval
