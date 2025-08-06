@@ -65,7 +65,6 @@ async def run(context: ResponseContext, request: str):
             species_key = await __search_species_by_name(
                 gbif_api, request, params.name, process
             )
-            # Create a new params object with the updated key since the original is frozen
             params = params.model_copy(update={"key": species_key})
 
         urls = gbif_api.build_species_taxonomic_urls(params)
@@ -241,16 +240,15 @@ async def __find_best_match(
 ) -> SpeciesMatch:
 
     client = instructor.from_provider(
-        "openai/gpt-4.1",
+        "openai/gpt-4o",
         async_client=True,
     )
 
     response = await client.chat.completions.create(
-        model="gpt-4o",
         messages=[
             {
                 "role": "system",
-                "content": "You are a helpful biodiversity researcher assistant that finds the best match for a species name for the user query. You will be given a user query and a dictionary of species details to keys. You will need to return the key of the best match.",
+                "content": "You are a helpful biodiversity researcher assistant that finds the best match for a species name for the user query. You will be given a user query and a dictionary of species keys and details. You will need to return the best match.",
             },
             {
                 "role": "user",
