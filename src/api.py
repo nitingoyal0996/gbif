@@ -19,15 +19,24 @@ from src.models.entrypoints import (
 
 
 class GbifApi:
-    """GBIF API interaction logic."""
+    _instance = None
+
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super(GbifApi, cls).__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
 
     def __init__(self):
+        if getattr(self, "_initialized", False):
+            return
         self.base_url = "https://api.gbif.org/v1"
         self.portal_url = "https://gbif.org"
         self.config = {
             "timeout": 30,
             "max_retries": 3
         }
+        self._initialized = True
 
     def _convert_to_api_params(self, params) -> Dict[str, Any]:
         """Convert Pydantic model to API parameters, handling enums properly."""
@@ -81,7 +90,7 @@ class GbifApi:
     def build_species_taxonomic_urls(
         self, params: GBIFSpeciesTaxonomicParams
     ) -> Dict[str, str]:
-        usage_key = params.usageKey
+        usage_key = params.key
         base_url = f"{self.base_url}/species/{usage_key}"
         urls = {
             "basic": f"{base_url}",
