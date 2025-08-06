@@ -60,7 +60,8 @@ async def run(context: ResponseContext, request: str):
             raw_response = await gbif_api.execute_request(api_url)
 
             total = raw_response.get('count', 0)
-            returned = len(raw_response.get('results', []))
+            records = raw_response.get("results", [])
+            returned = len(records)
 
             await process.log(f"Query successful, found {total} records.")
             await process.create_artifact(
@@ -68,9 +69,9 @@ async def run(context: ResponseContext, request: str):
                 description=description,
                 uris=[api_url],
                 metadata={
-                    "data_source": "GBIF",
+                    "data_source": "GBIF Occurrences",
+                    "data": records,
                     "record_count": returned,
-                    "total_matches": total,
                     "portal_url": gbif_api.build_portal_url(api_url),
                 },
             )

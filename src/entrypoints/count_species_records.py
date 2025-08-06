@@ -55,8 +55,8 @@ async def run(context: ResponseContext, request: str):
             await process.log("Querying GBIF for species statistics...")
             raw_response = await gbif_api.execute_request(api_url)
 
-            total = raw_response.get('count', 0)
-            facets = raw_response.get('facets', [])
+            total = raw_response.get("count", 0)
+            facets = raw_response.get("facets", [])
 
             await process.log(
                 f"Query successful, found {total} species records with {len(facets)} facet groups."
@@ -66,11 +66,8 @@ async def run(context: ResponseContext, request: str):
                 description=description,
                 uris=[api_url],
                 metadata={
-                    "data_source": "GBIF",
-                    "total_matches": total,
-                    "facet_groups": len(facets),
-                    "facet_fields": [facet.get("field", "unknown") for facet in facets],
-                    "search_type": "species_facets",
+                    "data_source": "GBIF Species",
+                    "data": facets,
                     "portal_url": gbif_api.build_portal_url(api_url),
                 },
             )

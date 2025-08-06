@@ -82,9 +82,9 @@ async def run(context: ResponseContext, request: str):
                 description=response.artifact_description,
                 uris=[f"https://api.gbif.org/v1/species/{params.key}"],
                 metadata={
-                    "data_source": "GBIF",
+                    "data_source": "GBIF Species",
                     "key": params.key,
-                    "taxonomic_data": taxonomic_data,
+                    "data": taxonomic_data,
                 },
             )
 
@@ -194,38 +194,41 @@ async def __search_species_by_name(
             q=name, status=TaxonomicStatusEnum.ACCEPTED, rank=TaxonomicRankEnum.SPECIES
         )
     )
-    results = await api.execute_request(url)
+    raw_response = await api.execute_request(url)
     await process.log(
-        f"Found {len(results.get('results', []))} matches for species name: {name}"
+        f"Found {len(raw_response.get("results", []))} matches for species name: {name}"
     )
 
+    records = raw_response.get("results", [])
     species_matches: List[SpeciesMatch] = []
-    for result in results.get("results", []):
+    for r in records:
         species_matches.append(
             SpeciesMatch(
-                key=result.get("key"),
-                scientificName=result.get("scientificName"),
-                canonicalName=result.get("canonicalName"),
-                rank=result.get("rank"),
-                kingdom=result.get("kingdom"),
-                phylum=result.get("phylum"),
-                class_=result.get("class"),
-                order=result.get("order"),
-                family=result.get("family"),
-                genus=result.get("genus"),
-                isExtinct=result.get("isExtinct"),
+                key=r.get("key"),
+                scientificName=r.get("scientificName"),
+                canonicalName=r.get("canonicalName"),
+                rank=r.get("rank"),
+                kingdom=r.get("kingdom"),
+                phylum=r.get("phylum"),
+                class_=r.get("class"),
+                order=r.get("order"),
+                family=r.get("family"),
+                genus=r.get("genus"),
+                isExtinct=r.get("isExtinct"),
             )
         )
 
     if not species_matches:
         raise ValueError(f"No species matches found for name: {name}")
 
-    # add artifact with species matches
     await process.create_artifact(
         mimetype="application/json",
-        description=f"Species matches for {name}",
-        uris=[f"https://api.gbif.org/v1/species/{name}"],
-        metadata={"data_source": "GBIF", "species_matches": species_matches},
+        description=f"Species matches for provided name: {name}",
+        uris=[url],
+        metadata={
+            "data_source": "GBIF Species",
+            "data": species_matches,
+        },
     )
 
     best_match = await __find_best_match(species_matches, user_query)

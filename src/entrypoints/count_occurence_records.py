@@ -74,21 +74,19 @@ async def run(context: ResponseContext, request: str):
             await process.log("Querying GBIF for occurrence statistics...")
             raw_response = await gbif.execute_request(api_url)
 
-            total = raw_response.get("count", 0)
             facets = raw_response.get("facets", [])
+            returned = len(facets)
 
             await process.log(
-                f"Query successful, found {total} records with {len(facets)} facet groups."
+                f"Query successful, found {returned} records with {len(facets)} facet groups."
             )
             await process.create_artifact(
                 mimetype="application/json",
                 description=description,
                 uris=[api_url],
                 metadata={
-                    "data_source": "GBIF",
-                    "total_matches": total,
-                    "facet_groups": len(facets),
-                    "facet_fields": [facet.get("field", "unknown") for facet in facets],
+                    "data_source": "GBIF Occurrences",
+                    "data": facets,
                     "portal_url": gbif.build_portal_url(api_url),
                 },
             )
