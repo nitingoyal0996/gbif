@@ -52,7 +52,9 @@ async def run(context: ResponseContext, request: str):
     AGENT_LOG_ID = f"COUNT_OCCURRENCE_RECORDS_{str(uuid.uuid4())[:6]}"
 
     async with context.begin_process("Requesting GBIF statistics") as process:
-        await process.log("GBIF: Generating request parameters...")
+        await process.log(
+            f"GBIF: Request recieved: {request}. Generating iChatBio for GBIF request parameters..."
+        )
         response = await parse(request, GBIFPath.OCCURRENCE, GBIFOccurrenceFacetsParams)
         params = response.search_parameters
         description = response.artifact_description
@@ -75,7 +77,7 @@ async def run(context: ResponseContext, request: str):
                     data=raw_response,
                 )
                 await context.reply(
-                    f"GBIF data retrieval failed with status code {status_code}"
+                    f"Data retrieval failed with status code {status_code}"
                 )
                 return
             await process.log(
@@ -84,26 +86,25 @@ async def run(context: ResponseContext, request: str):
             await process.log(f"GBIF: Processing response and preparing artifact...")
             facets = raw_response.get("facets", [])
             total_records = raw_response.get("count", 0)
+            portal_url = gbif.build_portal_url(api_url)
             await process.create_artifact(
                 mimetype="application/json",
                 description=description,
                 uris=[api_url],
                 metadata={
-                    "data_source": "https://api.gbif.org/v1/occurrence",
-                    "data": facets,
-                    "portal_url": gbif.build_portal_url(api_url),
+                    "portal_url": portal_url,
+                    "data_source": "GBIF",
+                    "data": raw_response,
                 },
             )
 
-            summary = _generate_response_summary(
-                total_records, facets, gbif.build_portal_url(api_url)
-            )
+            summary = _generate_response_summary(total_records, facets, portal_url)
 
             await context.reply(summary)
 
         except Exception as e:
             await process.log(
-                "GBIF: Error during API request",
+                f"GBIF: Error during API request",
                 data={
                     "error": str(e),
                     "agent_log_id": AGENT_LOG_ID,
@@ -111,7 +112,7 @@ async def run(context: ResponseContext, request: str):
                 },
             )
             await context.reply(
-                f"I encountered an error while trying to count occurrences: {str(e)}"
+                f"I encountered an error while trying to count occurrences: {str(e)}",
             )
 
 
@@ -126,5 +127,5 @@ def _generate_response_summary(
         summary += (
             f"Facet fields: {[facet.get('field', 'unknown') for facet in facets]} "
         )
-    summary += f"The results can be viewed in the GBIF portal at {portal_url}."
+    summary += f"The results can also be viewed in the GBIF portal at {portal_url}."
     return summary
