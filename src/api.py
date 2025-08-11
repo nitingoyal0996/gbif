@@ -46,45 +46,41 @@ class GbifApi:
             if value is None:
                 continue
 
-            # Handle enum values - extract the actual value
             if isinstance(value, list):
-                # Handle lists of enums or regular values
                 processed_values = []
                 for item in value:
                     if hasattr(item, 'value'):
                         processed_values.append(item.value)
                     else:
                         processed_values.append(item)
-                api_params[field_name] = processed_values
-            elif hasattr(value, 'value'):
-                # Handle single enum value
+                api_params[field_name] = ",".join(str(v) for v in processed_values)
+            elif hasattr(value, "value"):
                 api_params[field_name] = value.value
             else:
-                # Handle regular values
                 api_params[field_name] = value
 
         return api_params
 
     def build_occurrence_search_url(self, params: GBIFOccurrenceSearchParams) -> str:
         api_params = self._convert_to_api_params(params)
-        query_string = urlencode(api_params, doseq=True)
+        query_string = urlencode(api_params)
         return f"{self.base_url}/occurrence/search?{query_string}"
 
     def build_occurrence_facets_url(self, params: GBIFOccurrenceFacetsParams) -> str:
         api_params = self._convert_to_api_params(params)
         api_params["limit"] = 0
-        query_string = urlencode(api_params, doseq=True)
+        query_string = urlencode(api_params)
         return f"{self.base_url}/occurrence/search?{query_string}"
 
     def build_species_search_url(self, params: GBIFSpeciesSearchParams) -> str:
         api_params = self._convert_to_api_params(params)
-        query_string = urlencode(api_params, doseq=True)
+        query_string = urlencode(api_params)
         return f"{self.base_url}/species/search?{query_string}"
 
     def build_species_facets_url(self, params: GBIFSpeciesFacetsParams) -> str:
         api_params = self._convert_to_api_params(params)
         api_params["limit"] = 0
-        query_string = urlencode(api_params, doseq=True)
+        query_string = urlencode(api_params)
         return f"{self.base_url}/species/search?{query_string}"
 
     def build_species_taxonomic_urls(
