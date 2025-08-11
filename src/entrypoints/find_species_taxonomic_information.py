@@ -25,10 +25,15 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+description = """
+This entrypoint allows you to retrieve detailed taxonomic information for a species using its GBIF usage key (taxon key). You can request basic information, taxonomic hierarchy (parents and children), and synonyms. Optional parameters—such as including synonyms, children, or parents—are only enabled if explicitly mentioned in the request. If only a species name is provided without a usage key, the system may ask for clarification. The entrypoint also supports pagination and limiting the number of results. This is useful for obtaining comprehensive or specific taxonomic data, such as full classification, synonyms, or child taxa for a given species.
+"""
+
+
 entrypoint = AgentEntrypoint(
     id="species_taxonomic_information",
     name="Species Taxonomic Information",
-    description="Retrieve comprehensive taxonomic information for a species using its GBIF id",
+    description=description,
     examples=[
         "Get taxonomic information for species with id 5231190",
         "Show taxonomic hierarchy and synonyms for species 2476674",
