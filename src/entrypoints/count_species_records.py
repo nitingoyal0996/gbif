@@ -12,7 +12,7 @@ from ichatbio.types import AgentEntrypoint
 
 from src.api import GbifApi
 from src.models.entrypoints import GBIFSpeciesFacetsParams
-from src.log import with_logging
+from src.log import with_logging, logger
 from src.parser import parse, GBIFPath
 
 description = """
@@ -32,61 +32,82 @@ async def run(context: ResponseContext, request: str):
     Executes the species counting entrypoint. Counts species name usage records using the provided
     parameters and creates an artifact with the faceted statistical results.
     """
-    # Generate a unique agent log ID for this run for logging purposes
-    AGENT_LOG_ID = f"COUNT_SPECIES_RECORDS_{str(uuid.uuid4())[:6]}"
-
-    await context.reply("Parsing request parameters using LLM...")
-    response = await parse(request, GBIFPath.SPECIES, GBIFSpeciesFacetsParams)
-    params = response.search_parameters
-    description = response.artifact_description
-
-    async with context.begin_process("Counting GBIF species records with facets") as process:
-        process: IChatBioAgentProcess
-        await process.log(f"Agent log ID: {AGENT_LOG_ID}")
+    async with context.begin_process("Requesting GBIF statistics") as process:
+        AGENT_LOG_ID = f"COUNT_SPECIES_RECORDS_{str(uuid.uuid4())[:6]}"
         await process.log(
-            "Search and facet parameters", data=params.model_dump(exclude_defaults=True)
+            f"GBIF: Request received: {request}. Generating iChatBio for GBIF request parameters..."
+        )
+
+        response = await parse(request, GBIFPath.SPECIES, GBIFSpeciesFacetsParams)
+        params = response.search_parameters
+        description = response.artifact_description
+        await process.log(
+            "GBIF: Generated search and facet parameters: ",
+            data=params.model_dump(exclude_defaults=True),
         )
 
         gbif_api = GbifApi()
         api_url = gbif_api.build_species_facets_url(params)
-        await process.log(f"Constructed API URL: {api_url}")
+        await process.log(f"GBIF: Generated API URL: {api_url}")
 
         try:
-            await process.log("Querying GBIF for species statistics...")
+            await process.log(f"GBIF: Sending data retrieval request to {api_url}...")
             raw_response = await gbif_api.execute_request(api_url)
+            status_code = raw_response.get("status_code", 200)
+            if status_code != 200:
+                await process.log(
+                    f"GBIF: Data retrieval failed with status code {status_code}",
+                    data=raw_response,
+                )
+                await context.reply(
+                    f"Data retrieval failed with status code {status_code}",
+                )
+                return
+            await process.log(
+                f"GBIF: Data retrieval successful, status code {status_code}"
+            )
+            await process.log(f"GBIF: Processing response and preparing artifact...")
 
             total = raw_response.get("count", 0)
             facets = raw_response.get("facets", [])
+            portal_url = gbif_api.build_portal_url(api_url)
 
-            await process.log(
-                f"Query successful, found {total} species records with {len(facets)} facet groups."
-            )
             await process.create_artifact(
                 mimetype="application/json",
                 description=description,
                 uris=[api_url],
                 metadata={
+                    "portal_url": portal_url,
                     "data_source": "GBIF Species",
-                    "data": facets,
-                    "portal_url": gbif_api.build_portal_url(api_url),
+                    "data": raw_response,
                 },
             )
 
-            summary = f"I have successfully counted species records and found {total} matching name usage records. "
-            if facets:
-                facet_summary = ", ".join([f"{facet.get('field', 'unknown')} ({len(facet.get('counts', []))} values)" for facet in facets])
-                summary += f"The results are broken down by: {facet_summary}. "
-            summary += f"The statistical breakdown can be viewed in the GBIF portal at {gbif_api.build_portal_url(api_url)}."
-
+            summary = _generate_response_summary(total, facets, portal_url)
             await context.reply(summary)
 
         except Exception as e:
             await process.log(
-                "Error during API request",
+                f"GBIF: Error during API request",
                 data={
                     "error": str(e),
                     "agent_log_id": AGENT_LOG_ID,
                     "api_url": api_url,
                 },
             )
-            await context.reply(f"I encountered an error while trying to count species records: {str(e)}") 
+            await context.reply(
+                f"I encountered an error while trying to count species records: {str(e)}",
+            )
+
+
+def _generate_response_summary(total: int, facets: list[dict], portal_url: str) -> str:
+    if total > 0:
+        summary = f"I have successfully retrieved {total} species records. "
+    else:
+        summary = f"I have not found any species records matching your criteria. "
+    if facets:
+        summary += (
+            f"Facet fields: {[facet.get('field', 'unknown') for facet in facets]} "
+        )
+    summary += f"The results can also be viewed in the GBIF portal at {portal_url}."
+    return summary

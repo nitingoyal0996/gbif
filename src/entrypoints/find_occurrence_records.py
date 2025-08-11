@@ -6,7 +6,7 @@ Parameters are provided by the upstream service - no LLM generation needed.
 """
 import uuid
 
-from ichatbio.agent_response import ResponseContext, IChatBioAgentProcess
+from ichatbio.agent_response import ResponseContext
 from ichatbio.types import AgentEntrypoint
 
 from src.api import GbifApi

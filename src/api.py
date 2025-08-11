@@ -118,7 +118,9 @@ class GbifApi:
     def execute_sync_request(self, url: str) -> Dict[str, Any]:
         response = requests.get(url, timeout=self.config["timeout"])
         response.raise_for_status()
-        return response.json()
+        result = response.json()
+        result["status_code"] = response.status_code
+        return result
 
     async def execute_request(self, url: str) -> Dict[str, Any]:
         loop = asyncio.get_event_loop()
