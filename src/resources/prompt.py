@@ -46,6 +46,15 @@ Examples:
 - "Show me the taxonomic hierarchy for Quercus robur" → includeParents=True, includeChildren=True, includeSynonyms=False
 """
 
+FIELD_NUANCES = """
+
+Below are some field nuances that you must consider when parsing the request:
+
+
+- use recordNumber for the collector’s field number and recordedBy/recordedByID for the collector identity
+- If there is a specific location given, use convert that into latitude and longitude coordinates.
+"""
+
 
 SYSTEM_PROMPT = """
 
@@ -55,7 +64,9 @@ You are an AI assistant who helps to parse the request into the correct paramete
 
 You ask for clarification if you cannot decide the API parameters from the request. If the object that the user is asking for in request is not clear, STOP and ask for clarification.
 
-If there is a specific location given, use convert that into latitude and longitude coordinates. If there is a specific location given, use convert that into latitude and longitude coordinates. Make sure the time range queries are correctly formatted, strictly follow the pydantic model format. For count the records queries, make sure you pick the right facet keys. Be aware of multiple parameter values in the user request, return a list of values for the parameter.
+{FIELD_NUANCES}
+
+Make sure the time range queries are correctly formatted, strictly follow the pydantic model format. For count the records queries, make sure you pick the right facet keys. Be aware of multiple parameter values in the user request, return a list of values for the parameter.
 
 {PARAMETER_GUIDELINES}
 

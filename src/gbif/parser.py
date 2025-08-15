@@ -10,6 +10,7 @@ from src.resources.prompt import (
     OCCURRENCE_PARAMETER_GUIDELINES,
     SPECIES_PARAMETER_GUIDELINES,
     SPECIES_TAXONOMIC_PARAMETER_GUIDELINES,
+    FIELD_NUANCES,
 )
 
 from dotenv import load_dotenv
@@ -71,7 +72,9 @@ async def parse(
             {
                 "role": "system",
                 "content": SYSTEM_PROMPT.format(
-                    CURRENT_DATE=CURRENT_DATE, PARAMETER_GUIDELINES=parameter_guidelines
+                    CURRENT_DATE=CURRENT_DATE,
+                    PARAMETER_GUIDELINES=parameter_guidelines,
+                    FIELD_NUANCES=FIELD_NUANCES,
                 ),
             },
             {"role": "user", "content": request},
