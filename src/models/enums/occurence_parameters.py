@@ -41,6 +41,19 @@ class ContinentEnum(str, Enum):
         return self.value
 
 
+class GbifRegionEnum(str, Enum):
+    AFRICA = "AFRICA"
+    ASIA = "ASIA"
+    EUROPE = "EUROPE"
+    NORTH_AMERICA = "NORTH_AMERICA"
+    OCEANIA = "OCEANIA"
+    LATIN_AMERICA = "LATIN_AMERICA"
+    ANTARCTICA = "ANTARCTICA"
+
+    def __str__(self):
+        return self.value
+
+
 class OccurrenceStatusEnum(str, Enum):
     """
     A statement about the presence or absence of a Taxon at a Location.

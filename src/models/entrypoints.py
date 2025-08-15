@@ -7,6 +7,7 @@ from .base import ProductionBaseModel
 from .enums.occurence_parameters import (
     BasisOfRecordEnum,
     ContinentEnum,
+    GbifRegionEnum,
     OccurrenceStatusEnum,
     LicenseEnum,
     MediaObjectTypeEnum,
@@ -45,6 +46,12 @@ class GBIFOccurrenceBaseParams(ProductionBaseModel):
         examples=["plant", "bird observation", "mammal specimen"],
     )
 
+    hl: Optional[bool] = Field(
+        None,
+        description="Set hl=true to highlight terms matching the query when in full-text search fields. The highlight will be an emphasis tag of class gbifH1 e.g. /search?q=plant&hl=true. Full-text search fields include: title, keyword, country, publishing country, publishing organization title, hosting organization title, and description. One additional full text field is searched which includes information from metadata documents, but the text of this field is not returned in the response.",
+        examples=[True],
+    )
+
     occurrenceId: Optional[List[str]] = Field(
         None,
         description="A globally unique identifier for the occurrence record as provided by the publisher.",
@@ -55,15 +62,6 @@ class GBIFOccurrenceBaseParams(ProductionBaseModel):
         None,
         description="A taxon key from the GBIF backbone or the specified checklist. All included (child) and synonym taxa are included in the search, so a search for Aves with taxonKey=212 will match all birds, no matter which species.",
         examples=[[2476674], [2877951, 212], [44, 212, 1448]],
-    )
-
-    datasetKey: Optional[List[UUID]] = Field(
-        None,
-        description="The occurrence dataset key (a UUID).",
-        examples=[
-            ["13b70480-bd69-11dd-b15f-b8a03c50a862"],
-            ["e2e717bf-551a-4917-bdc9-4fa0f342c530"],
-        ],
     )
 
     basisOfRecord: Optional[List[BasisOfRecordEnum]] = Field(
@@ -82,6 +80,43 @@ class GBIFOccurrenceBaseParams(ProductionBaseModel):
         examples=[["K001275042"], ["12345", "67890"]],
     )
 
+    # DWCA extension parameters
+    dwcaExtension: Optional[List[str]] = Field(
+        None,
+        description="A known Darwin Core Archive extension RowType. Limits the search to occurrences which have this extension, although they will not necessarily have any useful data recorded using the extension. Parameter may be repeated.",
+        examples=[["http://rs.tdwg.org/ac/terms/Multimedia"]],
+    )
+
+    earliestEonOrLowestEonothem: Optional[List[str]] = Field(
+        None,
+        description="The full name of the earliest possible geochronologic era or lowest chronostratigraphic erathem attributable to the stratigraphic horizon from which the material entity was collected. Parameter may be repeated.",
+        examples=[["Mesozoic"]],
+    )
+
+    earliestEraOrLowestErathem: Optional[List[str]] = Field(
+        None,
+        description='The full name of the latest possible geochronologic eon or highest chrono-stratigraphic eonothem or the informal name ("Precambrian") attributable to the stratigraphic horizon from which the material entity was collected. Parameter may be repeated.',
+        examples=[["Proterozoic"]],
+    )
+
+    earliestPeriodOrLowestSystem: Optional[List[str]] = Field(
+        None,
+        description="The full name of the earliest possible geochronologic period or lowest chronostratigraphic system attributable to the stratigraphic horizon from which the material entity was collected. Parameter may be repeated.",
+        examples=[["Neogene"]],
+    )
+
+    earliestEpochOrLowestSeries: Optional[List[str]] = Field(
+        None,
+        description="The full name of the earliest possible geochronologic epoch or lowest chronostratigraphic series attributable to the stratigraphic horizon from which the material entity was collected. Parameter may be repeated.",
+        examples=[["Holocene"]],
+    )
+
+    earliestAgeOrLowestStage: Optional[List[str]] = Field(
+        None,
+        description="The full name of the earliest possible geochronologic age or lowest chronostratigraphic stage attributable to the stratigraphic horizon from which the material entity was collected. Parameter may be repeated.",
+        examples=[["Skullrockian"]],
+    )
+
     # Geographic filters
     country: Optional[List[str]] = Field(
         None,
@@ -96,6 +131,15 @@ class GBIFOccurrenceBaseParams(ProductionBaseModel):
             [ContinentEnum.EUROPE],
             [ContinentEnum.NORTH_AMERICA, ContinentEnum.SOUTH_AMERICA],
             [ContinentEnum.AFRICA, ContinentEnum.ASIA],
+        ],
+    )
+
+    gbifRegion: Optional[List[GbifRegionEnum]] = Field(
+        None,
+        description="Gbif region based on country code. Parameter may be repeated.",
+        examples=[
+            [GbifRegionEnum.AFRICA],
+            [GbifRegionEnum.NORTH_AMERICA, GbifRegionEnum.ANTARCTICA],
         ],
     )
 
@@ -123,6 +167,36 @@ class GBIFOccurrenceBaseParams(ProductionBaseModel):
         examples=[True, False],
     )
 
+    distanceFromCentroidInMeters: Optional[int] = Field(
+        None,
+        description="The horizontal distance (in metres) of the occurrence from the nearest centroid known to be used in automated georeferencing procedures, if that distance is 5000m or less. Occurrences (especially specimens) near a country centroid may have a poor-quality georeference, especially if coordinateUncertaintyInMeters is blank or large. Supports range queries.",
+        examples=[[0, 500]],
+    )
+
+    geoDistance: Optional[str] = Field(
+        None,
+        description="Filters to match occurrence records with coordinate values within a specified distance of a coordinate. Distance may be specified in kilometres (km) or metres (m).",
+        examples=["90,100,5km"],
+    )
+
+    geometry: Optional[List[str]] = Field(
+        None,
+        description="Searches for occurrences inside a polygon described in Well Known Text (WKT) format. Only POLYGON and MULTIPOLYGON are accepted WKT types. Polygons must have anticlockwise ordering of points. (A clockwise polygon represents the opposite area: the Earth's surface with a 'hole' in it. Such queries are not supported.)",
+        examples=[["POLYGON ((30.1 10.1, 40 40, 20 40, 10 20, 30.1 10.1))"]],
+    )
+
+    elevation: Optional[int] = Field(
+        None,
+        description="Elevation (altitude) in metres above sea level. Parameter may be repeated or a range.",
+        examples=[[1000, 1250]],
+    )
+
+    depth: Optional[int] = Field(
+        None,
+        description="Depth in metres relative to altitude. For example 10 metres below a lake surface with given altitude. Parameter may be repeated or a range.",
+        examples=[[10, 20]],
+    )
+
     # Temporal filters
     year: Optional[str] = Field(
         None,
@@ -136,10 +210,22 @@ class GBIFOccurrenceBaseParams(ProductionBaseModel):
         examples=["5", "1,12", "3,9"],
     )
 
+    day: Optional[int] = Field(
+        None,
+        description="The day of the month, starting with 1 for the first day. Supports range queries. For instance: day='1,31' will return all records from the first to the 31st day of the month.",
+        examples=["1", "1,31", "15"],
+    )
+
     eventDate: Optional[List[str]] = Field(
         None,
         description="Occurrence date in ISO 8601 format: yyyy, yyyy-MM or yyyy-MM-dd. Supports range queries. For instance: eventDate='2020,2023' will return all records from 2020 and 2023.",
         examples=[["2020"], ["2020-01", "2020-12"], ["2000,2001-06-30"]],
+    )
+
+    eventId: Optional[List[str]] = Field(
+        None,
+        description="An identifier for the information associated with a sampling event. Parameter may be repeated.",
+        examples=[["A 123"]],
     )
 
     # Taxonomic filters
@@ -171,6 +257,16 @@ class GBIFOccurrenceBaseParams(ProductionBaseModel):
         None, description="Species classification key.", examples=[[2476674], [1, 2, 3]]
     )
 
+    taxonomicStatus: Optional[TaxonomicStatusEnum] = Field(
+        None,
+        description="Filters by the taxonomic status to distinguish between accepted names, synonyms, and doubtful names. Essential for taxonomic research and data quality control.",
+        examples=[
+            TaxonomicStatusEnum.ACCEPTED,
+            TaxonomicStatusEnum.SYNONYM,
+            TaxonomicStatusEnum.DOUBTFUL,
+        ],
+    )
+
     # Additional filters
     occurrenceStatus: Optional[OccurrenceStatusEnum] = Field(
         None,
@@ -187,16 +283,55 @@ class GBIFOccurrenceBaseParams(ProductionBaseModel):
         ],
     )
 
+    identifiedBy: Optional[List[str]] = Field(
+        None,
+        description="The person who provided the taxonomic identification of the occurrence.",
+        examples=[["Allison"]],
+    )
+
+    identifiedByID: Optional[List[str]] = Field(
+        None,
+        description="Identifier (e.g. ORCID) for the person who provided the taxonomic identification of the occurrence.",
+        examples=[["https://orcid.org/0000-0001-6492-4016"]],
+    )
+
     institutionCode: Optional[List[str]] = Field(
         None,
         description="An identifier of any form assigned by the source to identify the institution the record belongs to. Not guaranteed to be unique.",
         examples=[["K"], ["USNM", "BMNH"]],
     )
 
+    datasetID: Optional[str] = Field(
+        None,
+        description="An identifier for the set of data. May be a global unique identifier or an identifier specific to a collection or institution.",
+        examples=["https://doi.org/10.1594/PANGAEA.315492"],
+    )
+
+    datasetKey: Optional[List[UUID]] = Field(
+        None,
+        description="The occurrence dataset key (a UUID).",
+        examples=[
+            ["13b70480-bd69-11dd-b15f-b8a03c50a862"],
+            ["e2e717bf-551a-4917-bdc9-4fa0f342c530"],
+        ],
+    )
+
+    datasetName: Optional[str] = Field(
+        None,
+        description="The name identifying the data set from which the record was derived.",
+        examples=["GBIF Backbone Taxonomy"],
+    )
+
     collectionCode: Optional[List[str]] = Field(
         None,
         description="An identifier of any form assigned by the source to identify the physical collection or digital dataset uniquely within the context of an institution.",
         examples=[["F"], ["BIRD", "MAMMAL"]],
+    )
+
+    collectionKey: Optional[List[UUID]] = Field(
+        None,
+        description="A key (UUID) for a collection registered in the Global Registry of Scientific Collections.",
+        examples=[["dceb8d52-094c-4c2c-8960-75e0097c6861"]],
     )
 
     recordNumber: Optional[List[str]] = Field(
@@ -211,10 +346,10 @@ class GBIFOccurrenceBaseParams(ProductionBaseModel):
         examples=[["MiljoStyrelsen"], ["John Smith", "Jane Doe"]],
     )
 
-    identifiedBy: Optional[List[str]] = Field(
+    publishingCountry: Optional[List[str]] = Field(
         None,
-        description="The person who provided the taxonomic identification of the occurrence.",
-        examples=[["Allison"], ["Dr. Smith", "Prof. Johnson"]],
+        description="The 2-letter country code (as per ISO-3166-1) of the owning organization's country.",
+        examples=[["AD"], ["US", "GB"]],
     )
 
     typeStatus: Optional[List[TypeStatusEnum]] = Field(
