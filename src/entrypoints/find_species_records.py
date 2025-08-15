@@ -10,10 +10,11 @@ import uuid
 from ichatbio.agent_response import ResponseContext
 from ichatbio.types import AgentEntrypoint
 
-from src.api import GbifApi
+from src.gbif.api import GbifApi
+from src.gbif.fetch import execute_request
 from src.models.entrypoints import GBIFSpeciesSearchParams
 from src.log import with_logging, logger
-from src.parser import parse, GBIFPath
+from src.gbif.parser import parse, GBIFPath
 
 
 description = """
@@ -48,13 +49,14 @@ async def run(context: ResponseContext, request: str):
             data=params.model_dump(exclude_defaults=True),
         )
 
-        gbif_api = GbifApi()
-        api_url = gbif_api.build_species_search_url(params)
+        api = GbifApi()
+
+        api_url = api.build_species_search_url(params)
         await process.log(f"GBIF: Constructed API URL: {api_url}")
 
         try:
             await process.log("GBIF: Querying GBIF for species data...")
-            raw_response = await gbif_api.execute_request(api_url)
+            raw_response = await execute_request(api_url)
             status_code = raw_response.get("status_code", 200)
             if status_code != 200:
                 await process.log(
@@ -72,7 +74,7 @@ async def run(context: ResponseContext, request: str):
 
             total = raw_response.get('count', 0)
             records = raw_response.get("results", [])
-            portal_url = gbif_api.build_portal_url(api_url)
+            portal_url = api.build_portal_url(api_url)
 
             await process.create_artifact(
                 mimetype="application/json",

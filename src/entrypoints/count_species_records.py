@@ -5,15 +5,15 @@ This entrypoint counts species name usage records and provides faceted statistic
 Provides statistical breakdowns of taxonomic data by various classification and status dimensions.
 """
 import uuid
-from typing import Optional
 
-from ichatbio.agent_response import ResponseContext, IChatBioAgentProcess
+from ichatbio.agent_response import ResponseContext
 from ichatbio.types import AgentEntrypoint
 
-from src.api import GbifApi
+from src.gbif.api import GbifApi
+from src.gbif.fetch import execute_request
 from src.models.entrypoints import GBIFSpeciesFacetsParams
 from src.log import with_logging, logger
-from src.parser import parse, GBIFPath
+from src.gbif.parser import parse, GBIFPath
 
 description = """
 This entrypoint works against data kept in the GBIF Checklist Bank which taxonomically indexes all registered checklist datasets in the GBIF network. And it provides services for counting species name usage records with statistical breakdowns by taxonomic, conservation, and nomenclatural dimensions.
@@ -46,13 +46,13 @@ async def run(context: ResponseContext, request: str):
             data=params.model_dump(exclude_defaults=True),
         )
 
-        gbif_api = GbifApi()
-        api_url = gbif_api.build_species_facets_url(params)
+        api = GbifApi()
+        api_url = api.build_species_facets_url(params)
         await process.log(f"GBIF: Generated API URL: {api_url}")
 
         try:
             await process.log(f"GBIF: Sending data retrieval request to {api_url}...")
-            raw_response = await gbif_api.execute_request(api_url)
+            raw_response = await execute_request(api_url)
             status_code = raw_response.get("status_code", 200)
             if status_code != 200:
                 await process.log(
@@ -70,7 +70,7 @@ async def run(context: ResponseContext, request: str):
 
             total = raw_response.get("count", 0)
             facets = raw_response.get("facets", [])
-            portal_url = gbif_api.build_portal_url(api_url)
+            portal_url = api.build_portal_url(api_url)
 
             await process.create_artifact(
                 mimetype="application/json",

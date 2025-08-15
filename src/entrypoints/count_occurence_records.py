@@ -10,11 +10,12 @@ import uuid
 from ichatbio.agent_response import ResponseContext
 from ichatbio.types import AgentEntrypoint
 
-from src.api import GbifApi
+from src.gbif.api import GbifApi
+from src.gbif.fetch import execute_request
 from src.models.entrypoints import GBIFOccurrenceFacetsParams
-from src.log import with_logging, logger
+from src.log import with_logging
 
-from src.parser import parse, GBIFPath
+from src.gbif.parser import parse, GBIFPath
 
 
 description = """
@@ -63,13 +64,13 @@ async def run(context: ResponseContext, request: str):
             data=params.model_dump(exclude_defaults=True),
         )
 
-        gbif = GbifApi()
-        api_url = gbif.build_occurrence_facets_url(params)
+        api = GbifApi()
+        api_url = api.build_occurrence_facets_url(params)
         await process.log(f"GBIF: Generated API URL: {api_url}")
 
         try:
             await process.log(f"GBIF: Sending data retrieval request to {api_url}...")
-            raw_response = await gbif.execute_request(api_url)
+            raw_response = await execute_request(api_url)
             status_code = raw_response.get("status_code", 200)
             if status_code != 200:
                 await process.log(
@@ -86,7 +87,7 @@ async def run(context: ResponseContext, request: str):
             await process.log(f"GBIF: Processing response and preparing artifact...")
             facets = raw_response.get("facets", [])
             total_records = raw_response.get("count", 0)
-            portal_url = gbif.build_portal_url(api_url)
+            portal_url = api.build_portal_url(api_url)
             await process.create_artifact(
                 mimetype="application/json",
                 description=description,

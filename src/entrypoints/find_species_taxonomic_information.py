@@ -9,12 +9,13 @@ children taxa, and species profiles.
 from ichatbio.agent_response import ResponseContext, IChatBioAgentProcess
 from ichatbio.types import AgentEntrypoint
 
-from src.api import GbifApi
+from src.gbif.api import GbifApi
+from src.gbif.fetch import execute_request, execute_multiple_requests
 from src.models.entrypoints import GBIFSpeciesSearchParams, GBIFSpeciesTaxonomicParams
 from src.models.enums.species_parameters import TaxonomicStatusEnum, TaxonomicRankEnum
 from src.models.responses.species import NameUsage, PagingResponseNameUsage
 from src.log import with_logging, logger
-from src.parser import parse, GBIFPath
+from src.gbif.parser import parse, GBIFPath
 
 from pydantic import BaseModel, Field
 from typing import List, Optional
@@ -65,7 +66,7 @@ async def run(context: ResponseContext, request: str):
             return
 
         params = response.search_parameters
-        gbif_api = GbifApi()
+        api = GbifApi()
 
         await process.log(
             "GBIF: Generated search parameters",
@@ -83,18 +84,18 @@ async def run(context: ResponseContext, request: str):
                 f"GBIF: No species id found, searching for species by name: {params.name}"
             )
             species_key = await __search_species_by_name(
-                gbif_api, request, params.name, process
+                api, request, params.name, process
             )
             params = params.model_copy(update={"key": species_key})
 
-        urls = gbif_api.build_species_taxonomic_urls(params)
+        urls = api.build_species_taxonomic_urls(params)
         await process.log(f"GBIF: Generated API URLs: {urls}")
 
         try:
             await process.log(
                 f"GBIF: Querying GBIF endpoints to gather taxonomic information..."
             )
-            results = await gbif_api.execute_multiple_requests(urls)
+            results = await execute_multiple_requests(urls)
             await process.log(f"GBIF: Data retrieval successful")
 
             await process.log(f"GBIF: Processing response and preparing artifact...")
@@ -238,7 +239,10 @@ class SpeciesMatch(BaseModel):
 
 
 async def __search_species_by_name(
-    api: GbifApi, user_query: str, name: str, process: IChatBioAgentProcess
+    api: GbifApi,
+    user_query: str,
+    name: str,
+    process: IChatBioAgentProcess,
 ) -> int:
     await process.log(f"GBIF: Searching for species by name: {name}")
 
@@ -249,7 +253,7 @@ async def __search_species_by_name(
     )
 
     try:
-        raw_response = await api.execute_request(url)
+        raw_response = await execute_request(url)
         records = raw_response.get("results", [])
         await process.log(
             f"GBIF: Found {len(records)} matches for species name: {name}"
