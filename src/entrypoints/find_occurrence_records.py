@@ -6,13 +6,15 @@ Parameters are provided by the upstream service - no LLM generation needed.
 """
 import uuid
 
-from ichatbio.agent_response import ResponseContext
+from ichatbio.agent_response import ResponseContext, IChatBioAgentProcess
 from ichatbio.types import AgentEntrypoint
 
-from src.api import GbifApi
+from src.gbif.api import GbifApi
+from src.gbif.fetch import execute_request
 from src.models.entrypoints import GBIFOccurrenceSearchParams
 from src.log import with_logging, logger
-from src.parser import parse, GBIFPath
+from src.gbif.parser import parse, GBIFPath
+from src.gbif.resolve_parameters import resolve_names_to_taxonkeys
 
 
 description = """
@@ -51,13 +53,29 @@ async def run(context: ResponseContext, request: str):
             data=params.model_dump(exclude_defaults=True),
         )
 
-        gbif_api = GbifApi()
-        api_url = gbif_api.build_occurrence_search_url(params)
+        api = GbifApi()
+        search_params = params
+
+        if params.scientificName:
+            await process.log(
+                f"GBIF: Resolving {params.scientificName} scientific names to taxon keys for better search results..."
+            )
+            taxon_keys = await resolve_names_to_taxonkeys(
+                api, params.scientificName, process
+            )
+            if taxon_keys:
+                search_params = await _update_search_params(params, taxon_keys, process)
+            else:
+                await process.log(
+                    "GBIF: Failed to resolve any scientific names to taxon keys, using original parameters"
+                )
+
+        api_url = api.build_occurrence_search_url(search_params)
         await process.log(f"GBIF: Constructed API URL: {api_url}")
 
         try:
             await process.log("GBIF: Querying GBIF for occurrence data...")
-            raw_response = await gbif_api.execute_request(api_url)
+            raw_response = await execute_request(api_url)
             status_code = raw_response.get("status_code", 200)
             if status_code != 200:
                 await process.log(
@@ -74,14 +92,14 @@ async def run(context: ResponseContext, request: str):
             await process.log(f"GBIF: Processing response and preparing artifact...")
             total = raw_response.get("count", 0)
             records = raw_response.get("results", [])
-            portal_url = gbif_api.build_portal_url(api_url)
+            portal_url = api.build_portal_url(api_url)
             await process.create_artifact(
                 mimetype="application/json",
                 description=description,
                 uris=[api_url],
                 metadata={
                     "portal_url": portal_url,
-                    "data_source": "GBIF",
+                    "data_source": "GBIF Occurrence",
                     "data": raw_response,
                 },
             )
@@ -110,6 +128,22 @@ def _generate_response_summary(total: int, returned: int, portal_url: str) -> st
     else:
         summary = f"I have not found any occurrence records matching your criteria. "
     if returned < total:
-        summary += f"I've returned {returned} records in this response. "
+        summary += f"I've returned {returned} records in this response. out of {total} records."
     summary += f"The results can also be viewed in the GBIF portal at {portal_url}."
     return summary
+
+
+async def _update_search_params(
+    params: GBIFOccurrenceSearchParams,
+    taxon_keys: list,
+    process: IChatBioAgentProcess,
+) -> GBIFOccurrenceSearchParams:
+    taxon_key_ints = [int(key) for key in taxon_keys]
+    search_params_data = params.model_dump(exclude_defaults=True)
+    search_params_data["taxonKey"] = taxon_key_ints
+    search_params_data["scientificName"] = None
+    search_params = GBIFOccurrenceSearchParams(**search_params_data)
+    await process.log(
+        f"GBIF: Created new search parameters with taxon keys: {taxon_key_ints} and preserved other parameters"
+    )
+    return search_params
