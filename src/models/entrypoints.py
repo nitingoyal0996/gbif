@@ -199,6 +199,12 @@ class GBIFOccurrenceBaseParams(ProductionBaseModel):
         examples=[["F"], ["BIRD", "MAMMAL"]],
     )
 
+    recordNumber: Optional[List[str]] = Field(
+        None,
+        description="An identifier given to the record at the time it was recorded in the field; often links field notes to the event.",
+        examples=[["1"], ["23", "234543"]],
+    )
+
     recordedBy: Optional[List[str]] = Field(
         None,
         description="The person who recorded the occurrence.",
