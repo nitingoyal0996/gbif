@@ -48,11 +48,12 @@ Examples:
 
 FIELD_NUANCES = """
 
-Below are some field nuances that you must consider when parsing the request:
-
+GBIF FIELD NUANCES: 
+Below are some observations based on real world usage that you must consider when parsing the request:
 
 - use recordNumber for the collector’s field number and recordedBy/recordedByID for the collector identity
 - If there is a specific location given, use convert that into latitude and longitude coordinates.
+- Do not add taxonomic keys such as - kingdomKey, phylumKey, classKey, orderKey, familyKey, genusKey, speciesKey, etc. unless they are explicitly mentioned in the request or to narrow down the search if the request does not contain a scientific information
 """
 
 
