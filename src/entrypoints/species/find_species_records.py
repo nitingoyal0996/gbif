@@ -36,41 +36,39 @@ async def run(context: ResponseContext, request: str):
     """
     async with context.begin_process("Requesting GBIF Species Records") as process:
         AGENT_LOG_ID = f"FIND_SPECIES_RECORDS_{str(uuid.uuid4())[:6]}"
-        logger.info(fAgent log ID: {AGENT_LOG_ID}")
+        logger.info(f"Agent log ID: {AGENT_LOG_ID}")
         await process.log(
-            fRequest received: {request}. Generating iChatBio for GBIF request parameters..."
+            f"Request received: {request}. Generating iChatBio for GBIF request parameters..."
         )
 
         response = await parse(request, GBIFPath.SPECIES, GBIFSpeciesSearchParams)
         params = response.search_parameters
         description = response.artifact_description
         await process.log(
-            Generated search parameters",
+            "Generated search parameters",
             data=params.model_dump(exclude_defaults=True),
         )
 
         api = GbifApi()
 
         api_url = api.build_species_search_url(params)
-        await process.log(fConstructed API URL: {api_url}")
+        await process.log(f"Constructed API URL: {api_url}")
 
         try:
-            await process.log(Querying GBIF for species data...")
+            await process.log("Querying GBIF for species data...")
             raw_response = await execute_request(api_url)
             status_code = raw_response.get("status_code", 200)
             if status_code != 200:
                 await process.log(
-                    fData retrieval failed with status code {status_code}",
+                    f"Data retrieval failed with status code {status_code}",
                     data=raw_response,
                 )
                 await context.reply(
                     f"Data retrieval failed with status code {status_code}",
                 )
                 return
-            await process.log(
-                fData retrieval successful, status code {status_code}"
-            )
-            await process.log(fProcessing response and preparing artifact...")
+            await process.log(f"Data retrieval successful, status code {status_code}")
+            await process.log("Processing response and preparing artifact...")
 
             total = raw_response.get('count', 0)
             records = raw_response.get("results", [])
@@ -91,7 +89,7 @@ async def run(context: ResponseContext, request: str):
 
         except Exception as e:
             await process.log(
-                fError during API request",
+                "Error during API request",
                 data={
                     "error": str(e),
                     "agent_log_id": AGENT_LOG_ID,
@@ -107,7 +105,7 @@ def _generate_response_summary(total: int, returned: int, portal_url: str) -> st
     if total > 0:
         summary = f"I have successfully searched for species and found {total} matching name usage records. "
     else:
-        summary = f"I have not found any species records matching your criteria. "
+        summary = "I have not found any species records matching your criteria. "
     if returned < total:
         summary += f"I've returned {returned} records in this response. "
     summary += f"The results can also be viewed in the GBIF portal at {portal_url}."

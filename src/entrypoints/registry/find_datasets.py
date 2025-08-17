@@ -48,41 +48,39 @@ async def run(context: ResponseContext, request: str):
     """
     async with context.begin_process("Requesting GBIF Dataset Search") as process:
         AGENT_LOG_ID = f"FIND_DATASETS_{str(uuid.uuid4())[:6]}"
-        logger.info(fAgent log ID: {AGENT_LOG_ID}")
+        logger.info(f"Agent log ID: {AGENT_LOG_ID}")
         await process.log(
-            fRequest received: {request}. Generating iChatBio for GBIF request parameters..."
+            f"Request received: {request}. Generating iChatBio for GBIF request parameters..."
         )
 
         response = await parse(request, GBIFPath.REGISTRY, GBIFDatasetSearchParams)
         params = response.search_parameters
         description = response.artifact_description
         await process.log(
-            Generated search parameters",
+            "Generated search parameters",
             data=params.model_dump(exclude_defaults=True),
         )
 
         api = GbifApi()
 
         api_url = api.build_dataset_search_url(params)
-        await process.log(fConstructed API URL: {api_url}")
+        await process.log(f"Constructed API URL: {api_url}")
 
         try:
-            await process.log(Querying GBIF for dataset data...")
+            await process.log("Querying GBIF for dataset data...")
             raw_response = await execute_request(api_url)
             status_code = raw_response.get("status_code", 200)
             if status_code != 200:
                 await process.log(
-                    fData retrieval failed with status code {status_code}",
+                    f"Data retrieval failed with status code {status_code}",
                     data=raw_response,
                 )
                 await context.reply(
                     f"Data retrieval failed with status code {status_code}",
                 )
                 return
-            await process.log(
-                fData retrieval successful, status code {status_code}"
-            )
-            await process.log(fProcessing response and preparing artifact...")
+            await process.log(f"Data retrieval successful, status code {status_code}")
+            await process.log("Processing response and preparing artifact...")
 
             total = raw_response.get('count', 0)
             records = raw_response.get("results", [])
@@ -103,7 +101,7 @@ async def run(context: ResponseContext, request: str):
 
         except Exception as e:
             await process.log(
-                fError during API request",
+                f"Error during API request",
                 data={
                     "error": str(e),
                     "agent_log_id": AGENT_LOG_ID,

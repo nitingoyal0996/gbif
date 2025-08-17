@@ -41,15 +41,15 @@ async def run(context: ResponseContext, request: str):
 
     async with context.begin_process("Requesting GBIF Occurrence Records") as process:
         AGENT_LOG_ID = f"FIND_OCCURRENCE_RECORDS_{str(uuid.uuid4())[:6]}"
-        logger.info(fAgent log ID: {AGENT_LOG_ID}")
+        logger.info(f"Agent log ID: {AGENT_LOG_ID}")
         await process.log(
-            fRequest recieved: {request}. Generating iChatBio for GBIF request parameters..."
+            f"Request recieved: {request}. Generating iChatBio for GBIF request parameters..."
         )
         response = await parse(request, GBIFPath.OCCURRENCE, GBIFOccurrenceSearchParams)
         params = response.search_parameters
         description = response.artifact_description
         await process.log(
-            Generated search parameters",
+            "Generated search parameters",
             data=params.model_dump(exclude_defaults=True),
         )
 
@@ -58,7 +58,7 @@ async def run(context: ResponseContext, request: str):
 
         if params.scientificName:
             await process.log(
-                fResolving {params.scientificName} scientific names to taxon keys for better search results..."
+                f"Resolving {params.scientificName} scientific names to taxon keys for better search results..."
             )
             taxon_keys = await resolve_names_to_taxonkeys(
                 api, params.scientificName, process
@@ -67,29 +67,27 @@ async def run(context: ResponseContext, request: str):
                 search_params = await _update_search_params(params, taxon_keys, process)
             else:
                 await process.log(
-                    Failed to resolve any scientific names to taxon keys, using original parameters"
+                    "Failed to resolve any scientific names to taxon keys, using original parameters"
                 )
 
         api_url = api.build_occurrence_search_url(search_params)
-        await process.log(fConstructed API URL: {api_url}")
+        await process.log(f"Constructed API URL: {api_url}")
 
         try:
-            await process.log(Querying GBIF for occurrence data...")
+            await process.log("Querying GBIF for occurrence data...")
             raw_response = await execute_request(api_url)
             status_code = raw_response.get("status_code", 200)
             if status_code != 200:
                 await process.log(
-                    fData retrieval failed with status code {status_code}",
+                    f"Data retrieval failed with status code {status_code}",
                     data=raw_response,
                 )
                 await context.reply(
                     f"Data retrieval failed with status code {status_code}",
                 )
                 return
-            await process.log(
-                fData retrieval successful, status code {status_code}"
-            )
-            await process.log(fProcessing response and preparing artifact...")
+            await process.log(f"Data retrieval successful, status code {status_code}")
+            await process.log("Processing response and preparing artifact...")
             total = raw_response.get("count", 0)
             records = raw_response.get("results", [])
             portal_url = api.build_portal_url(api_url)
@@ -109,7 +107,7 @@ async def run(context: ResponseContext, request: str):
 
         except Exception as e:
             await process.log(
-                fError during API request",
+                "Error during API request",
                 data={
                     "error": str(e),
                     "agent_log_id": AGENT_LOG_ID,
@@ -125,7 +123,7 @@ def _generate_response_summary(total: int, returned: int, portal_url: str) -> st
     if total > 0:
         summary = f"I have successfully searched for occurrences and found {total} matching records. "
     else:
-        summary = f"I have not found any occurrence records matching your criteria. "
+        summary = "I have not found any occurrence records matching your criteria. "
     if returned < total:
         summary += f"I've returned {returned} records in this response. out of {total} records."
     summary += f"The results can also be viewed in the GBIF portal at {portal_url}."
@@ -143,6 +141,6 @@ async def _update_search_params(
     search_params_data["scientificName"] = None
     search_params = GBIFOccurrenceSearchParams(**search_params_data)
     await process.log(
-        fCreated new search parameters with taxon keys: {taxon_key_ints} and preserved other parameters"
+        f"Created new search parameters with taxon keys: {taxon_key_ints} and preserved other parameters"
     )
     return search_params
