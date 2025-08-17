@@ -54,12 +54,12 @@ async def run(context: ResponseContext, request: str):
     ) as process:
         try:
             await process.log(
-                f"GBIF: Request received: {request}. Generating iChatBio for GBIF request parameters..."
+                fRequest received: {request}. Generating iChatBio for GBIF request parameters..."
             )
             response = await parse(request, GBIFPath.SPECIES_TAXONOMIC, parameters_model=GBIFSpeciesTaxonomicParams)
         except Exception as e:
             await process.log(
-                f"GBIF: Failed to parse request parameters",
+                fFailed to parse request parameters",
                 data={"error": str(e)},
             )
             await context.reply(f"Failed to parse request parameters: {str(e)}")
@@ -69,7 +69,7 @@ async def run(context: ResponseContext, request: str):
         api = GbifApi()
 
         await process.log(
-            "GBIF: Generated search parameters",
+            Generated search parameters",
             data=params.model_dump(exclude_defaults=True),
         )
 
@@ -81,7 +81,7 @@ async def run(context: ResponseContext, request: str):
 
         if not getattr(params, "key", None):
             await process.log(
-                f"GBIF: No species id found, searching for species by name: {params.name}"
+                fNo species id found, searching for species by name: {params.name}"
             )
             species_key = await __search_species_by_name(
                 api, request, params.name, process
@@ -89,16 +89,16 @@ async def run(context: ResponseContext, request: str):
             params = params.model_copy(update={"key": species_key})
 
         urls = api.build_species_taxonomic_urls(params)
-        await process.log(f"GBIF: Generated API URLs: {urls}")
+        await process.log(fGenerated API URLs: {urls}")
 
         try:
             await process.log(
-                f"GBIF: Querying GBIF endpoints to gather taxonomic information..."
+                fQuerying GBIF endpoints to gather taxonomic information..."
             )
             results = await execute_multiple_requests(urls)
-            await process.log(f"GBIF: Data retrieval successful")
+            await process.log(fData retrieval successful")
 
-            await process.log(f"GBIF: Processing response and preparing artifact...")
+            await process.log(fProcessing response and preparing artifact...")
             taxonomic_data = __extract_taxonomic_data(results)
 
             await process.create_artifact(
@@ -108,7 +108,6 @@ async def run(context: ResponseContext, request: str):
                 metadata={
                     "data_source": "GBIF Species",
                     "key": params.key,
-                    "data": taxonomic_data,
                 },
             )
 
@@ -117,7 +116,7 @@ async def run(context: ResponseContext, request: str):
 
         except Exception as e:
             await process.log(
-                f"GBIF: Error retrieving taxonomic information",
+                fError retrieving taxonomic information",
                 data={"error": str(e)},
             )
             await context.reply(f"Failed to retrieve taxonomic information: {str(e)}")
@@ -167,7 +166,7 @@ def __extract_taxonomic_data(results: dict) -> dict:
                 "is_extinct": basic.isExtinct,
             }
         except Exception as e:
-            logger.error(f"GBIF: Error parsing basic info {e}; adding raw results")
+            logger.error(fError parsing basic info {e}; adding raw results")
             taxonomic_data["basic_info"] = results["basic"]
 
     if "parents" in results and "error" not in results["parents"]:
@@ -182,7 +181,7 @@ def __extract_taxonomic_data(results: dict) -> dict:
                 for parent in parents
             ]
         except Exception as e:
-            logger.error(f"GBIF: Error parsing parents {e}; adding raw results")
+            logger.error(fError parsing parents {e}; adding raw results")
             taxonomic_data["taxonomic_hierarchy"] = results["parents"]
 
     if "synonyms" in results and "error" not in results["synonyms"]:
@@ -200,7 +199,7 @@ def __extract_taxonomic_data(results: dict) -> dict:
                 ],
             }
         except Exception as e:
-            logger.error(f"GBIF: Error parsing synonyms {e}; adding raw results")
+            logger.error(fError parsing synonyms {e}; adding raw results")
             taxonomic_data["synonyms"] = results["synonyms"]
 
     if "children" in results and "error" not in results["children"]:
@@ -218,7 +217,7 @@ def __extract_taxonomic_data(results: dict) -> dict:
                 ],
             }
         except Exception as e:
-            logger.error(f"GBIF: Error parsing children {e}; adding raw results")
+            logger.error(fError parsing children {e}; adding raw results")
             taxonomic_data["children"] = results["children"]
 
     return taxonomic_data
@@ -244,7 +243,7 @@ async def __search_species_by_name(
     name: str,
     process: IChatBioAgentProcess,
 ) -> int:
-    await process.log(f"GBIF: Searching for species by name: {name}")
+    await process.log(fSearching for species by name: {name}")
 
     url = api.build_species_search_url(
         GBIFSpeciesSearchParams(
@@ -256,7 +255,7 @@ async def __search_species_by_name(
         raw_response = await execute_request(url)
         records = raw_response.get("results", [])
         await process.log(
-            f"GBIF: Found {len(records)} matches for species name: {name}"
+            fFound {len(records)} matches for species name: {name}"
         )
 
         species_matches: List[SpeciesMatch] = []
@@ -285,18 +284,17 @@ async def __search_species_by_name(
             description=f"Species matches for provided name: {name}",
             uris=[url],
             metadata={
-                "data_source": "GBIF Species",
-                "data": species_matches,
+                "data_source": "GBIF Species Matches",
             },
         )
 
         best_match = await __find_best_match(species_matches, user_query)
-        await process.log(f"GBIF: Selected best match: {best_match.model_dump_json()}")
+        await process.log(fSelected best match: {best_match.model_dump_json()}")
         return best_match.key
 
     except Exception as e:
         await process.log(
-            f"GBIF: Error searching for species by name",
+            fError searching for species by name",
             data={"error": str(e), "species_name": name},
         )
         raise

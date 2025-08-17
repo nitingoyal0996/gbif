@@ -48,13 +48,13 @@ async def run(context: ResponseContext, request: str):
     async with context.begin_process("Requesting GBIF statistics") as process:
         AGENT_LOG_ID = f"COUNT_OCCURRENCE_RECORDS_{str(uuid.uuid4())[:6]}"
         await process.log(
-            f"GBIF: Request recieved: {request}. Generating iChatBio for GBIF request parameters..."
+            fRequest recieved: {request}. Generating iChatBio for GBIF request parameters..."
         )
         response = await parse(request, GBIFPath.OCCURRENCE, GBIFOccurrenceFacetsParams)
         params = response.search_parameters
         description = response.artifact_description
         await process.log(
-            "GBIF: Generated search and facet parameters: ",
+            Generated search and facet parameters: ",
             data=params.model_dump(exclude_defaults=True),
         )
 
@@ -63,7 +63,7 @@ async def run(context: ResponseContext, request: str):
 
         if params.scientificName:
             await process.log(
-                f"GBIF: Resolving {params.scientificName} scientific names to taxon keys for better search results..."
+                fResolving {params.scientificName} scientific names to taxon keys for better search results..."
             )
             taxon_keys = await resolve_names_to_taxonkeys(
                 api, params.scientificName, process
@@ -72,19 +72,19 @@ async def run(context: ResponseContext, request: str):
                 search_params = await _update_search_params(params, taxon_keys, process)
             else:
                 await process.log(
-                    "GBIF: Failed to resolve any scientific names to taxon keys, using original parameters"
+                    Failed to resolve any scientific names to taxon keys, using original parameters"
                 )
 
         api_url = api.build_occurrence_facets_url(search_params)
-        await process.log(f"GBIF: Generated API URL: {api_url}")
+        await process.log(fGenerated API URL: {api_url}")
 
         try:
-            await process.log(f"GBIF: Sending data retrieval request to {api_url}...")
+            await process.log(fSending data retrieval request to {api_url}...")
             raw_response = await execute_request(api_url)
             status_code = raw_response.get("status_code", 200)
             if status_code != 200:
                 await process.log(
-                    f"GBIF: Data retrieval failed with status code {status_code}",
+                    fData retrieval failed with status code {status_code}",
                     data=raw_response,
                 )
                 await context.reply(
@@ -92,9 +92,9 @@ async def run(context: ResponseContext, request: str):
                 )
                 return
             await process.log(
-                f"GBIF: Data retrieval successful, status code {status_code}"
+                fData retrieval successful, status code {status_code}"
             )
-            await process.log(f"GBIF: Processing response and preparing artifact...")
+            await process.log(fProcessing response and preparing artifact...")
             facets = raw_response.get("facets", [])
             total_records = raw_response.get("count", 0)
             portal_url = api.build_portal_url(api_url)
@@ -104,8 +104,7 @@ async def run(context: ResponseContext, request: str):
                 uris=[api_url],
                 metadata={
                     "portal_url": portal_url,
-                    "data_source": "GBIF",
-                    "data": raw_response,
+                    "data_source": "GBIF Occurrence",
                 },
             )
 
@@ -115,7 +114,7 @@ async def run(context: ResponseContext, request: str):
 
         except Exception as e:
             await process.log(
-                f"GBIF: Error during API request",
+                fError during API request",
                 data={
                     "error": str(e),
                     "agent_log_id": AGENT_LOG_ID,
@@ -153,6 +152,6 @@ async def _update_search_params(
     search_params_data["scientificName"] = None
     search_params = GBIFOccurrenceFacetsParams(**search_params_data)
     await process.log(
-        f"GBIF: Created new search parameters with taxon keys: {taxon_key_ints} and preserved other parameters"
+        fCreated new search parameters with taxon keys: {taxon_key_ints} and preserved other parameters"
     )
     return search_params

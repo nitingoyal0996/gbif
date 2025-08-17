@@ -38,9 +38,9 @@ async def run(context: ResponseContext, request: str):
     """
     async with context.begin_process("Requesting GBIF Occurrence by ID") as process:
         AGENT_LOG_ID = f"FIND_OCCURRENCE_BY_ID_{str(uuid.uuid4())[:6]}"
-        logger.info(f"GBIF: Agent log ID: {AGENT_LOG_ID}")
+        logger.info(fAgent log ID: {AGENT_LOG_ID}")
         await process.log(
-            f"GBIF: Request received: {request}. Generating iChatBio for GBIF request parameters..."
+            fRequest received: {request}. Generating iChatBio for GBIF request parameters..."
         )
 
         response = await parse(
@@ -49,22 +49,22 @@ async def run(context: ResponseContext, request: str):
         params = response.search_parameters
         description = response.artifact_description
         await process.log(
-            "GBIF: Generated search parameters",
+            Generated search parameters",
             data=params.model_dump(exclude_defaults=True),
         )
 
         api = GbifApi()
 
         api_url = api.build_occurrence_by_id_url(params)
-        await process.log(f"GBIF: Constructed API URL: {api_url}")
+        await process.log(fConstructed API URL: {api_url}")
 
         try:
-            await process.log("GBIF: Querying GBIF for occurrence data...")
+            await process.log(Querying GBIF for occurrence data...")
             raw_response = await execute_request(api_url)
             status_code = raw_response.get("status_code", 200)
             if status_code != 200:
                 await process.log(
-                    f"GBIF: Data retrieval failed with status code {status_code}",
+                    fData retrieval failed with status code {status_code}",
                     data=raw_response,
                 )
                 await context.reply(
@@ -72,9 +72,9 @@ async def run(context: ResponseContext, request: str):
                 )
                 return
             await process.log(
-                f"GBIF: Data retrieval successful, status code {status_code}"
+                fData retrieval successful, status code {status_code}"
             )
-            await process.log(f"GBIF: Processing response and preparing artifact...")
+            await process.log(fProcessing response and preparing artifact...")
 
             portal_url = api.build_portal_url(api_url)
 
@@ -85,7 +85,6 @@ async def run(context: ResponseContext, request: str):
                 metadata={
                     "portal_url": portal_url,
                     "data_source": "GBIF Occurrence",
-                    "data": raw_response,
                 },
             )
 
@@ -94,7 +93,7 @@ async def run(context: ResponseContext, request: str):
 
         except Exception as e:
             await process.log(
-                f"GBIF: Error during API request",
+                fError during API request",
                 data={
                     "error": str(e),
                     "agent_log_id": AGENT_LOG_ID,
