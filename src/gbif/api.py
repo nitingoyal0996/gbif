@@ -11,6 +11,8 @@ from src.models.entrypoints import (
     GBIFSpeciesSearchParams,
     GBIFSpeciesFacetsParams,
     GBIFSpeciesTaxonomicParams,
+    GBIFOccurrenceByIdParams,
+    GBIFDatasetSearchParams,
 )
 
 
@@ -95,9 +97,27 @@ class GbifApi:
         query_string = urlencode(params, doseq=True)
         return f"{base_url}?{query_string}"
 
+    def build_occurrence_by_id_url(self, params: GBIFOccurrenceByIdParams) -> str:
+        gbif_id = params.gbifId
+        base_url = f"{self.base_url}/occurrence/{gbif_id}"
+        return base_url
+
+    def build_dataset_search_url(self, params: GBIFDatasetSearchParams) -> str:
+        api_params = self._convert_to_api_params(params)
+        query_string = urlencode(api_params, doseq=True)
+        return f"{self.base_url}/dataset/search?{query_string}"
+
+
     def build_portal_url(self, api_url: str) -> str:
+        portal_url = self.portal_url
         if "/occurrence/search?" in api_url:
-            return api_url.replace(self.base_url, self.portal_url)
+            portal_url = api_url.replace(self.base_url, self.portal_url)
         elif "/species/search?" in api_url:
-            return api_url.replace(self.base_url, self.portal_url)
-        return api_url
+            portal_url = api_url.replace(self.base_url, self.portal_url)
+        elif "/occurrence/" in api_url and not "?" in api_url:
+            portal_url = api_url.replace(self.base_url, self.portal_url)
+        elif "/dataset/search?" in api_url:
+            portal_url = api_url.replace(self.base_url, self.portal_url)
+        portal_url = portal_url.replace("&limit=0", "")
+        portal_url = portal_url.replace("?limit=0", "")
+        return portal_url

@@ -12,6 +12,8 @@ from src.entrypoints import (
     find_species_records,
     count_species_records,
     find_species_taxonomic_information,
+    find_occurrence_by_id,
+    find_datasets,
 )
 from src.log import logger
 
@@ -29,6 +31,8 @@ class GBIFAgent(IChatBioAgent):
                 find_species_records.entrypoint,
                 count_species_records.entrypoint,
                 find_species_taxonomic_information.entrypoint,
+                find_occurrence_by_id.entrypoint,
+                find_datasets.entrypoint,
             ],
         )
 
@@ -55,6 +59,10 @@ class GBIFAgent(IChatBioAgent):
                     await count_species_records.run(context, request)
                 case find_species_taxonomic_information.entrypoint.id:
                     await find_species_taxonomic_information.run(context, request)
+                case find_occurrence_by_id.entrypoint.id:
+                    await find_occurrence_by_id.run(context, request)
+                case find_datasets.entrypoint.id:
+                    await find_datasets.run(context, request)
                 case _:
                     error_msg = f"Unknown entrypoint: {entrypoint}"
                     logger.error(f"AGENT_ERROR | {error_msg}")

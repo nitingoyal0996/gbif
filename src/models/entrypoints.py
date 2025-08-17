@@ -25,6 +25,14 @@ from .enums.species_parameters import (
     IssueEnum,
 )
 
+from .enums.registry_parameters import (
+    DatasetTypeEnum,
+    DatasetSubtypeEnum,
+    EndpointTypeEnum,
+    ContinentEnum,
+    LicenseEnum,
+)
+
 
 class GBIFOccurrenceBaseParams(ProductionBaseModel):
     """Base parameters for GBIF occurrence operations - contains all common search and filter parameters"""
@@ -722,5 +730,243 @@ class GBIFSpeciesTaxonomicParams(ProductionBaseModel):
         0,
         ge=0,
         description="Offset for pagination in paginated endpoints.",
+        examples=[0, 20, 40],
+    )
+
+
+class GBIFOccurrenceByIdParams(ProductionBaseModel):
+    """Parameters for GBIF occurrence by ID - retrieves a single occurrence record by its GBIF ID"""
+
+    gbifId: int = Field(
+        ...,
+        description="The GBIF ID (gbifId) for the occurrence. This is a required parameter that uniquely identifies the occurrence in the GBIF occurrence store.",
+        examples=[1258202889, 5006758998, 4996399785],
+    )
+
+
+class GBIFDatasetSearchParams(ProductionBaseModel):
+    """Parameters for GBIF dataset search - full-text search across all datasets with filtering options"""
+
+    # Core search parameters
+    q: Optional[str] = Field(
+        None,
+        description="Simple full text search parameter. The value for this parameter can be a simple word or a phrase. Wildcards are not supported.",
+        examples=["bird observations", "plant specimens", "marine biodiversity"],
+    )
+
+    hl: Optional[bool] = Field(
+        None,
+        description="Set to true to highlight terms matching the query when in fulltext search fields. The highlight will be an emphasis tag of class `gbifHl`.",
+        examples=[True, False],
+    )
+
+    # Dataset type filters
+    type: Optional[DatasetTypeEnum] = Field(
+        None,
+        description="The primary type of the dataset.",
+        examples=[
+            DatasetTypeEnum.OCCURRENCE,
+            DatasetTypeEnum.CHECKLIST,
+            DatasetTypeEnum.METADATA,
+            DatasetTypeEnum.SAMPLING_EVENT,
+        ],
+    )
+
+    subtype: Optional[DatasetSubtypeEnum] = Field(
+        None,
+        description="The sub-type of the dataset.",
+        examples=[
+            DatasetSubtypeEnum.TAXONOMIC_AUTHORITY,
+            DatasetSubtypeEnum.SPECIMEN,
+            DatasetSubtypeEnum.OBSERVATION,
+        ],
+    )
+
+    # Organization filters
+    publishingOrg: Optional[str] = Field(
+        None,
+        description="Filters datasets by their publishing organization UUID key.",
+        examples=["b542788f-0dc2-4a2b-b652-fceced449591"],
+    )
+
+    hostingOrg: Optional[str] = Field(
+        None,
+        description="Filters datasets by their hosting organization UUID key.",
+        examples=["b542788f-0dc2-4a2b-b652-fceced449591"],
+    )
+
+    # Content filters
+    keyword: Optional[str] = Field(
+        None,
+        description="Filters datasets by a case insensitive plain text keyword. The search is done on the merged collection of tags, the dataset keywordCollections and temporalCoverages.",
+        examples=["biodiversity", "conservation", "taxonomy"],
+    )
+
+    decade: Optional[int] = Field(
+        None,
+        description="Filters datasets by their temporal coverage broken down to decades. Decades are given as a full year, e.g. 1880, 1960, 2000, etc.",
+        examples=[1880, 1960, 2000, 2020],
+    )
+
+    publishingCountry: Optional[str] = Field(
+        None,
+        description="Filters datasets by their owning organization's country given as a ISO 639-1 (2 letter) country code.",
+        examples=["US", "GB", "DE", "FR"],
+    )
+
+    hostingCountry: Optional[str] = Field(
+        None,
+        description="Filters datasets by their hosting organization's country given as a ISO 639-1 (2 letter) country code.",
+        examples=["US", "GB", "DE", "FR"],
+    )
+
+    continent: Optional[ContinentEnum] = Field(
+        None,
+        description="Filters datasets by continent based on a 7 continent model.",
+        examples=[
+            ContinentEnum.NORTH_AMERICA,
+            ContinentEnum.EUROPE,
+            ContinentEnum.ASIA,
+        ],
+    )
+
+    license: Optional[LicenseEnum] = Field(
+        None,
+        description="The dataset's licence.",
+        examples=[
+            LicenseEnum.CC0_1_0,
+            LicenseEnum.CC_BY_4_0,
+            LicenseEnum.CC_BY_NC_4_0,
+        ],
+    )
+
+    # Additional filters
+    projectId: Optional[str] = Field(
+        None,
+        description="Filter or facet based on the project ID of a given dataset. A dataset can have a project id if it is the result of a project.",
+        examples=["AA003-AA003311F"],
+    )
+
+    taxonKey: Optional[int] = Field(
+        None,
+        description="A taxon key from the GBIF backbone.",
+        examples=[5231190, 2476674, 2877951],
+    )
+
+    recordCount: Optional[str] = Field(
+        None,
+        description="Number of records of the dataset. Accepts ranges and a `*` can be used as a wildcard.",
+        examples=["100,*", "1000,10000", "*"],
+    )
+
+    modifiedDate: Optional[str] = Field(
+        None,
+        description="Date when the dataset was modified the last time. Accepts ranges and a `*` can be used as a wildcard.",
+        examples=["2022-05-01,*", "2020,2023", "*"],
+    )
+
+    doi: Optional[str] = Field(
+        None,
+        description="A DOI identifier.",
+        examples=["10.15468/dl.abc123"],
+    )
+
+    networkKey: Optional[str] = Field(
+        None,
+        description="Network associated to a dataset.",
+        examples=["b542788f-0dc2-4a2b-b652-fceced449591"],
+    )
+
+    endorsingNodeKey: Optional[str] = Field(
+        None,
+        description="Node key that endorsed this dataset's publisher.",
+        examples=["b542788f-0dc2-4a2b-b652-fceced449591"],
+    )
+
+    installationKey: Optional[str] = Field(
+        None,
+        description="Key of the installation that hosts the dataset.",
+        examples=["b542788f-0dc2-4a2b-b652-fceced449591"],
+    )
+
+    endpointType: Optional[EndpointTypeEnum] = Field(
+        None,
+        description="Type of the endpoint of the dataset.",
+        examples=[
+            EndpointTypeEnum.DWC_ARCHIVE,
+            EndpointTypeEnum.EML,
+            EndpointTypeEnum.BIOCASE,
+        ],
+    )
+
+    category: Optional[str] = Field(
+        None,
+        description="Category of the dataset.",
+        examples=["biodiversity", "taxonomy", "ecology"],
+    )
+
+    contactUserId: Optional[str] = Field(
+        None,
+        description="Filter datasets by contact user ID (e.g., ORCID).",
+        examples=["0000-0001-2345-6789"],
+    )
+
+    contactEmail: Optional[str] = Field(
+        None,
+        description="Filter datasets by contact email address.",
+        examples=["contact@example.org"],
+    )
+
+    # Faceting parameters
+    facet: Optional[List[str]] = Field(
+        None,
+        description="A facet name used to retrieve the most frequent values for a field. This parameter may be repeated to request multiple facets.",
+        examples=[
+            ["type"],
+            ["license", "publishingCountry"],
+            ["type", "license", "publishingCountry"],
+        ],
+    )
+
+    facetMinCount: Optional[int] = Field(
+        None,
+        ge=1,
+        description="Used in combination with the facet parameter. Set to exclude facets with a count less than the specified value.",
+        examples=[1, 10, 100],
+    )
+
+    facetMultiselect: Optional[bool] = Field(
+        None,
+        description="Used in combination with the facet parameter. Set to true to still return counts for values that are not currently filtered.",
+        examples=[True, False],
+    )
+
+    facetLimit: Optional[int] = Field(
+        None,
+        ge=1,
+        description="Facet parameters allow paging requests using the parameters facetOffset and facetLimit.",
+        examples=[10, 50, 100],
+    )
+
+    facetOffset: Optional[int] = Field(
+        None,
+        ge=0,
+        description="Facet parameters allow paging requests using the parameters facetOffset and facetLimit.",
+        examples=[0, 50, 100],
+    )
+
+    # Pagination parameters
+    limit: Optional[int] = Field(
+        20,
+        ge=1,
+        le=100,
+        description="Controls the number of results in the page. Using too high a value will be overwritten with the default maximum threshold.",
+        examples=[10, 20, 50, 100],
+    )
+
+    offset: Optional[int] = Field(
+        0,
+        ge=0,
+        description="Determines the offset for the search results. A limit of 20 and offset of 40 will get the third page of 20 results.",
         examples=[0, 20, 40],
     )
