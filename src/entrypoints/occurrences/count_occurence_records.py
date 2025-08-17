@@ -7,7 +7,7 @@ Parameters are provided by the upstream service - no LLM generation needed.
 
 import uuid
 
-from ichatbio.agent_response import ResponseContext
+from ichatbio.agent_response import ResponseContext, IChatBioAgentProcess
 from ichatbio.types import AgentEntrypoint
 
 from src.gbif.api import GbifApi
@@ -16,6 +16,7 @@ from src.models.entrypoints import GBIFOccurrenceFacetsParams
 from src.log import with_logging
 
 from src.gbif.parser import parse, GBIFPath
+from src.gbif.resolve_parameters import resolve_names_to_taxonkeys
 
 
 description = """
@@ -43,10 +44,9 @@ async def run(context: ResponseContext, request: str):
     Executes the occurrence counting entrypoint. Counts occurrence records using the provided
     parameters and creates an artifact with the faceted results.
     """
-    # Generate a unique agent log ID for this run for logging purposes
-    AGENT_LOG_ID = f"COUNT_OCCURRENCE_RECORDS_{str(uuid.uuid4())[:6]}"
 
     async with context.begin_process("Requesting GBIF statistics") as process:
+        AGENT_LOG_ID = f"COUNT_OCCURRENCE_RECORDS_{str(uuid.uuid4())[:6]}"
         await process.log(
             f"GBIF: Request recieved: {request}. Generating iChatBio for GBIF request parameters..."
         )
@@ -59,7 +59,23 @@ async def run(context: ResponseContext, request: str):
         )
 
         api = GbifApi()
-        api_url = api.build_occurrence_facets_url(params)
+        search_params = params
+
+        if params.scientificName:
+            await process.log(
+                f"GBIF: Resolving {params.scientificName} scientific names to taxon keys for better search results..."
+            )
+            taxon_keys = await resolve_names_to_taxonkeys(
+                api, params.scientificName, process
+            )
+            if taxon_keys:
+                search_params = await _update_search_params(params, taxon_keys, process)
+            else:
+                await process.log(
+                    "GBIF: Failed to resolve any scientific names to taxon keys, using original parameters"
+                )
+
+        api_url = api.build_occurrence_facets_url(search_params)
         await process.log(f"GBIF: Generated API URL: {api_url}")
 
         try:
@@ -124,3 +140,19 @@ def _generate_response_summary(
         )
     summary += f"The results can also be viewed in the GBIF portal at {portal_url}."
     return summary
+
+
+async def _update_search_params(
+    params: GBIFOccurrenceFacetsParams,
+    taxon_keys: list,
+    process: IChatBioAgentProcess,
+) -> GBIFOccurrenceFacetsParams:
+    taxon_key_ints = [int(key) for key in taxon_keys]
+    search_params_data = params.model_dump(exclude_defaults=True)
+    search_params_data["taxonKey"] = taxon_key_ints
+    search_params_data["scientificName"] = None
+    search_params = GBIFOccurrenceFacetsParams(**search_params_data)
+    await process.log(
+        f"GBIF: Created new search parameters with taxon keys: {taxon_key_ints} and preserved other parameters"
+    )
+    return search_params
