@@ -19,21 +19,15 @@ from src.gbif.parser import parse, GBIFPath
 
 
 description = """
-This works against the GBIF Occurrence Store, which handles occurrence records. This entrypoint provides services for counting occurrence records with faceted statistics that have been indexed by GBIF.
+This works against the GBIF Occurrence Store, which handles occurrence records. This entrypoint provides services for counting occurrence records with faceted statistics that have been indexed by GBIF. This entrypoint can help generate timelines and geographic distributions by faceting on fields. For example, it can trace collector travels by faceting on recordedBy, year, and country.
 
-Counts occurrence records and provides faceted statistics using the GBIF occurrences API. Returns the total
-number of records found, breakdown by specified facets, the URL constructed to query the GBIF occurrences API,
-and a URL to view the results on the GBIF web portal.
+Counts occurrence records and provides faceted statistics using the GBIF occurrences API. Returns the total number of records found, breakdown by specified facets, the URL constructed to query the GBIF occurrences API, and a URL to view the results on the GBIF web portal.
 
 Parameters are provided by the upstream service and include search criteria plus facet specifications:
 - Search filters (same as find_occurrence_records)
 - Facet fields to analyze (scientificName, country, year, etc.)
 - Facet minimum count thresholds
 - Facet selection options
-
-Note:
-- Year is a 4 digit year. A year of 98 will be interpreted as AD 98. Supports range queries. For instance: year='2020,2023' will return all records from 2020 and 2023.
-- Month is the month of the year, starting with 1 for January. Supports range queries. For instance: month='5,12' will return all records from May to December.
 """
 
 entrypoint = AgentEntrypoint(
