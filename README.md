@@ -1,40 +1,27 @@
 # GBIF Agent Project Architecture
 
+
 ## High-level
 
 ```mermaid
 sequenceDiagram
-    participant U as User
-    participant A as GBIFAgent
-    participant P as Parser
-    participant O as OpenAI API
-    participant E as Entrypoint
-    participant G as GbifApi
-    participant GB as GBIF API
-    participant L as Logger
+    participant u as iChatBio
+    participant e as Entrypoint - GBIF Agent
+    participant p as Request Parser
+    participant o as OpenAI API
+    participant gb as GBIF API
 
-    U->>A: Natural Language Request
-    A->>P: Parse Request
-    P->>O: LLM Processing
-    O->>P: Structured Parameters
-    P->>E: Validated Parameters
-    E->>G: Build API URLs
-    G->>GB: HTTP Requests
-    GB->>G: JSON Responses
-    G->>E: Processed Data
-    E->>L: Log Operations
-    E->>U: Formatted Response
+    u->>e: makes request
+    e->>p: parses request
+    p->>o: llm processing
+    o->>p: structured parameters
+    p->>e: validated parameters
+    e->>e: builds gbif request uri
+    e->>gb: request
+    gb->>e: response
+    e->>e: generate artifacts
+    e->>u: finishes request
 ```
-
-## Key Features
-
-- **LLM-Powered Parsing**: Uses OpenAI GPT-4.1 to parse natural language requests into structured API parameters
-- **Multiple Entry Points**: 5 different entry points for various GBIF data operations
-- **Concurrent API Calls**: Efficiently handles multiple GBIF API endpoints simultaneously
-- **Structured Logging**: Comprehensive logging system for debugging and monitoring
-- **Type Safety**: Full Pydantic model validation for requests and responses
-- **Error Handling**: Robust error handling with graceful degradation
-- **Artifact Generation**: Creates structured artifacts with metadata for downstream processing
 
 ## Entry Points Overview
 
