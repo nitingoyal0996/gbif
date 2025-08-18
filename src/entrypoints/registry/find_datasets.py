@@ -1,9 +1,3 @@
-"""
-GBIF Find Datasets Entrypoint
-
-This entrypoint searches for datasets using the GBIF registry API.
-Parameters are provided by the upstream service - no LLM generation needed.
-"""
 import uuid
 
 from ichatbio.agent_response import ResponseContext

@@ -1,9 +1,3 @@
-"""
-GBIF Find Occurrence Records Entrypoint
-
-This entrypoint searches for species occurrence records using the GBIF occurrences API.
-Parameters are provided by the upstream service - no LLM generation needed.
-"""
 import uuid
 
 from ichatbio.agent_response import ResponseContext, IChatBioAgentProcess

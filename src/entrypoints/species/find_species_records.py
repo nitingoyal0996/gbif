@@ -1,10 +1,3 @@
-"""
-GBIF Species Search Entrypoint
-
-This entrypoint searches for species name usages using the GBIF species API.
-Provides full-text search over name usages covering scientific and vernacular names,
-species descriptions, distribution and classification data.
-"""
 import uuid
 
 from ichatbio.agent_response import ResponseContext

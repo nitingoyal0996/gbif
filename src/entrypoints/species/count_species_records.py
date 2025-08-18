@@ -1,9 +1,3 @@
-"""
-GBIF Count Species Records Entrypoint
-
-This entrypoint counts species name usage records and provides faceted statistics using the GBIF species API.
-Provides statistical breakdowns of taxonomic data by various classification and status dimensions.
-"""
 import uuid
 
 from ichatbio.agent_response import ResponseContext

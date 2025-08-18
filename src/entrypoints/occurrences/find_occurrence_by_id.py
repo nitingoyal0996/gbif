@@ -1,10 +1,3 @@
-"""
-GBIF Find Occurrence by ID Entrypoint
-
-This entrypoint retrieves a single occurrence record by its GBIF ID using the GBIF occurrences API.
-Parameters are provided by the upstream service - no LLM generation needed.
-"""
-
 import uuid
 
 from ichatbio.agent_response import ResponseContext

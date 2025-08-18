@@ -1,11 +1,3 @@
-"""
-GBIF Species Taxonomic Information Entrypoint
-
-This entrypoint retrieves comprehensive taxonomic information for a specific species
-using its GBIF species identifier. Provides detailed taxonomic classification, synonyms,
-children taxa, and species profiles.
-"""
-
 from ichatbio.agent_response import ResponseContext, IChatBioAgentProcess
 from ichatbio.types import AgentEntrypoint
 
