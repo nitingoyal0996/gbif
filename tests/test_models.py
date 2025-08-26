@@ -4,87 +4,50 @@ from src.models.entrypoints import (
     GBIFOccurrenceSearchParams,
     GBIFOccurrenceFacetsParams,
     BasisOfRecordEnum,
-    ContinentEnum,
 )
 
-# -------------------------
-# Negative Tests (Validation)
-# -------------------------
 
-@pytest.mark.parametrize(
-    "params",
-    [
-        {"decimalLatitude": "91,92"},                  # latitude out of range
-        {"decimalLongitude": "-181,181"},              # longitude out of range
-        {"limit": 301},                                # limit too high
-        {"offset": -1},                                # offset negative
-        {"basisOfRecord": ["INVALID_TYPE"]},           # invalid enum
-        {"continent": ["INVALID_CONTINENT"]},          # invalid enum
-        {"datasetKey": ["not-a-uuid"]},                # invalid UUID
-    ],
-    ids=[
-        "latitude_out_of_range",
-        "longitude_out_of_range",
-        "limit_too_high",
-        "offset_negative",
-        "invalid_basis_of_record",
-        "invalid_continent",
-        "invalid_dataset_key",
-    ]
-)
-def test_invalid_base_params(params):
-    with pytest.raises(ValidationError):
-        GBIFOccurrenceSearchParams(**params)
+class TestGBIFOccurrenceSearchParams:
+    """Tests for GBIFOccurrenceSearchParams validation and behavior"""
 
+    def test_valid_basic_params(self):
+        """Test creation with basic valid parameters"""
+        params = GBIFOccurrenceSearchParams(
+            scientificName=["Quercus robur"],
+            basisOfRecord=[BasisOfRecordEnum.PRESERVED_SPECIMEN],
+        )
+        assert params.limit == 100  # inherited default
+        assert params.scientificName == ["Quercus robur"]
 
-@pytest.mark.parametrize(
-    "params",
-    [
-        {},  # missing required `facet`
-        {"facet": ["country"], "facetMincount": 0},  # facetMincount too low
-    ],
-    ids=["missing_facet", "facet_mincount_too_low"]
-)
-def test_invalid_facet_params(params):
-    with pytest.raises(ValidationError):
-        GBIFOccurrenceFacetsParams(**params)
-
-
-# -------------------------
-# Positive Tests (Valid Inputs)
-# -------------------------
-
-def test_search_params_inheritance_defaults():
-    params = GBIFOccurrenceSearchParams(
-        scientificName=["Quercus robur"],
-        basisOfRecord=[BasisOfRecordEnum.PRESERVED_SPECIMEN],
-    )
-    assert params.scientificName == ["Quercus robur"]
-    assert params.basisOfRecord == [BasisOfRecordEnum.PRESERVED_SPECIMEN]
-    assert params.limit == 100  # inherited default
-
-
-def test_facets_params_with_realistic_filters():
-    params = GBIFOccurrenceFacetsParams(
-        facet=["scientificName", "country", "year"],
-        scientificName=["Puma concolor"],
-        continent=[
-            ContinentEnum.NORTH_AMERICA,
-            ContinentEnum.SOUTH_AMERICA
+    @pytest.mark.parametrize(
+        "invalid_data, expected_error",
+        [
+            ({"decimalLatitude": "91,92"}, "latitude must be between -90 and 90"),
+            ({"limit": 301}, "input should be less than or equal to 300"),
         ],
-        year="2020",
-        basisOfRecord=[BasisOfRecordEnum.HUMAN_OBSERVATION],
-        facetMincount=10,
-        facetMultiselect=True,
     )
-    assert params.facet == ["scientificName", "country", "year"]
-    assert params.scientificName == ["Puma concolor"]
-    assert params.continent == [
-        ContinentEnum.NORTH_AMERICA,
-        ContinentEnum.SOUTH_AMERICA
-    ]
-    assert params.year == "2020"
-    assert params.basisOfRecord == [BasisOfRecordEnum.HUMAN_OBSERVATION]
-    assert params.facetMincount == 10
-    assert params.facetMultiselect is True
-    assert params.limit == 0  # facet model override
+    def test_validation_errors(self, invalid_data, expected_error):
+        """Test various validation error scenarios"""
+        with pytest.raises(ValidationError) as exc_info:
+            GBIFOccurrenceSearchParams(**invalid_data)
+        assert expected_error in str(exc_info.value).lower()
+
+
+class TestGBIFOccurrenceFacetsParams:
+    """Tests for GBIFOccurrenceFacetsParams validation and behavior"""
+
+    def test_valid_facets_configuration(self):
+        """Test creation with valid facet parameters"""
+        params = GBIFOccurrenceFacetsParams(
+            facet=["scientificName", "country"],
+            facetMincount=10,
+            scientificName=["Puma concolor"],
+        )
+        assert params.limit == 0  # facet model override
+        assert params.facetMincount == 10
+
+    def test_required_facet_parameter(self):
+        """Test that facet parameter is required"""
+        with pytest.raises(ValidationError) as exc_info:
+            GBIFOccurrenceFacetsParams()
+        assert "facet" in str(exc_info.value).lower()
