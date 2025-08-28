@@ -88,8 +88,34 @@ async def run(context: ResponseContext, request: str):
                 f"Querying GBIF endpoints to gather taxonomic information..."
             )
             results = await execute_multiple_requests(urls)
-            await process.log(f"Data retrieval successful")
+            failed_endpoints = []
+            failed_urls = []
+            successful_retrieval = False
+            for endpoint_name, result in results.items():
+                if isinstance(result, dict) and result.get("error"):
+                    await process.log(
+                        f"Data retrieval failed for '{endpoint_name}': {result.get('error')}"
+                    )
+                    failed_endpoints.append(endpoint_name)
+                    failed_urls.append(urls.get(endpoint_name, ""))
+                else:
+                    successful_retrieval = True
 
+            if not successful_retrieval:
+                await process.log("Data retrieval failed.")
+                await process.create_artifact(
+                    mimetype="application/json",
+                    description="Taxonomic information could not be retrieved.",
+                    uris=failed_urls,
+                    metadata={
+                        "data_source": "GBIF Species",
+                        "key": params.key,
+                    },
+                )
+                await context.reply(f"Taxonomic information could not be retrieved.")
+                return
+
+            await process.log(f"Data retrieval successful")
             await process.log(f"Processing response and preparing artifact...")
             taxonomic_data = __extract_taxonomic_data(results)
 
@@ -101,6 +127,10 @@ async def run(context: ResponseContext, request: str):
                     "data_source": "GBIF Species",
                     "key": params.key,
                 },
+            )
+
+            await process.log(
+                "Generating summary for data extracted", data=taxonomic_data
             )
 
             summary = _generate_response_summary(params.key, taxonomic_data)

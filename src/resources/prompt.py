@@ -5,6 +5,8 @@ Other parameters:
 - limit: Use when the request specifies a number of results to return (default 20, max 100)
 - offset: Use for pagination when the request mentions "more results" or "next page"
 - q: Use for full-text search when the request is vague and none of the other specific parameters are available
+
+Do not use scientificName as a facet key.
 """
 
 SPECIES_PARAMETER_GUIDELINES = """

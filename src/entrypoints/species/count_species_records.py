@@ -61,7 +61,6 @@ async def run(context: ResponseContext, request: str):
             await process.log("Processing response and preparing artifact...")
 
             total = raw_response.get("count", 0)
-            facets = raw_response.get("facets", [])
             portal_url = api.build_portal_url(api_url)
 
             await process.create_artifact(
@@ -74,7 +73,7 @@ async def run(context: ResponseContext, request: str):
                 },
             )
 
-            summary = _generate_response_summary(total, facets, portal_url)
+            summary = _generate_response_summary(total, portal_url)
             await context.reply(summary)
 
         except Exception as e:
@@ -91,14 +90,10 @@ async def run(context: ResponseContext, request: str):
             )
 
 
-def _generate_response_summary(total: int, facets: list[dict], portal_url: str) -> str:
+def _generate_response_summary(total: int, portal_url: str) -> str:
     if total > 0:
-        summary = f"I have successfully retrieved {total} species records. "
+        summary = f"I have successfully retrieved species records. "
     else:
         summary = "I have not found any species records matching your criteria. "
-    if facets:
-        summary += (
-            f"Facet fields: {[facet.get('field', 'unknown') for facet in facets]} "
-        )
     summary += f"The results can also be viewed in the GBIF portal at {portal_url}."
     return summary

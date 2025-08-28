@@ -86,7 +86,6 @@ async def run(context: ResponseContext, request: str):
                 return
             await process.log(f"Data retrieval successful, status code {status_code}")
             await process.log("Processing response and preparing artifact...")
-            facets = raw_response.get("facets", [])
             total_records = raw_response.get("count", 0)
             portal_url = api.build_portal_url(api_url)
             await process.create_artifact(
@@ -99,7 +98,7 @@ async def run(context: ResponseContext, request: str):
                 },
             )
 
-            summary = _generate_response_summary(total_records, facets, portal_url)
+            summary = _generate_response_summary(total_records, portal_url)
 
             await context.reply(summary)
 
@@ -117,17 +116,11 @@ async def run(context: ResponseContext, request: str):
             )
 
 
-def _generate_response_summary(
-    total_records: int, facets: list[dict], portal_url: str
-) -> str:
+def _generate_response_summary(total_records: int, portal_url: str) -> str:
     if total_records > 0:
-        summary = f"I have successfully retrieved {total_records} occurrence records. "
+        summary = f"I have successfully retrieved occurrence records. "
     else:
         summary = "I have not found any occurrence records matching your criteria. "
-    if facets:
-        summary += (
-            f"Facet fields: {[facet.get('field', 'unknown') for facet in facets]} "
-        )
     summary += f"The results can also be viewed in the GBIF portal at {portal_url}."
     return summary
 

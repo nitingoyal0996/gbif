@@ -76,8 +76,7 @@ async def run(context: ResponseContext, request: str):
             await process.log(f"Data retrieval successful, status code {status_code}")
             await process.log("Processing response and preparing artifact...")
 
-            total = raw_response.get('count', 0)
-            records = raw_response.get("results", [])
+            total = raw_response.get("count", 0)
             portal_url = api.build_portal_url(api_url)
 
             await process.create_artifact(
@@ -90,7 +89,7 @@ async def run(context: ResponseContext, request: str):
                 },
             )
 
-            summary = _generate_response_summary(total, len(records), portal_url)
+            summary = _generate_response_summary(total, portal_url)
             await context.reply(summary)
 
         except Exception as e:
@@ -107,12 +106,12 @@ async def run(context: ResponseContext, request: str):
             )
 
 
-def _generate_response_summary(total: int, returned: int, portal_url: str) -> str:
+def _generate_response_summary(total: int, portal_url: str) -> str:
     if total > 0:
-        summary = f"I have successfully searched for datasets and found {total} matching records. "
+        summary = (
+            f"I have successfully searched for datasets and found matching records. "
+        )
     else:
         summary = f"I have not found any datasets matching your criteria. "
-    if returned < total:
-        summary += f"I've returned {returned} records in this response. "
     summary += f"The results can also be viewed in the GBIF portal at {portal_url}."
     return summary
