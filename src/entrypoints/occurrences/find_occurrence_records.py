@@ -12,7 +12,7 @@ from src.gbif.resolve_parameters import resolve_names_to_taxonkeys
 
 
 description = """
-This entrypoint works against the GBIF Occurrence Store, which handles occurrence records. This entrypoint provides services for searching occurrence records that have been indexed by GBIF.
+This entrypoint works against the GBIF Occurrence Store, which handles occurrence records. This entrypoint provides services for searching occurrence records that have been indexed by GBIF. Location based analysis of species and occurrence records is also supported.
 
 Note:
 - Year is a 4 digit year. A year of 98 will be interpreted as AD 98. Supports range queries. For instance: year='2020,2023' will return all records from 2020 and 2023.

@@ -13,15 +13,13 @@ from src.gbif.resolve_parameters import resolve_names_to_taxonkeys
 
 
 description = """
-This works against the GBIF Occurrence Store, which handles occurrence records. This entrypoint provides services for counting occurrence records with faceted statistics that have been indexed by GBIF. This entrypoint can help generate timelines and geographic distributions by faceting on fields. For example, it can trace collector travels by faceting on recordedBy, year, and country.
+This works against the GBIF Occurrence Store, which handles occurrence records. This entrypoint provides services for counting occurrence records with faceted statistics that have been indexed by GBIF. This entrypoint can help generate timelines and geographic distributions by faceting on fields. For example, it can trace collector travels by faceting on recordedBy, year, and country. It can also help with location-based analysis of species and occurrence records.
 
 Counts occurrence records and provides faceted statistics using the GBIF occurrences API. Returns the total number of records found, breakdown by specified facets, the URL constructed to query the GBIF occurrences API, and a URL to view the results on the GBIF web portal.
 
 Parameters are provided by the upstream service and include search criteria plus facet specifications:
 - Search filters (same as find_occurrence_records)
-- Facet fields to analyze (scientificName, country, year, etc.)
-- Facet minimum count thresholds
-- Facet selection options
+- Facet fields to analyze (country, year, etc.)
 """
 
 entrypoint = AgentEntrypoint(
