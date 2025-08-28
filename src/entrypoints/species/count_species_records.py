@@ -6,7 +6,7 @@ from ichatbio.types import AgentEntrypoint
 from src.gbif.api import GbifApi
 from src.gbif.fetch import execute_request
 from src.models.entrypoints import GBIFSpeciesFacetsParams
-from src.log import with_logging, logger
+from src.log import with_logging
 from src.gbif.parser import parse, GBIFPath
 
 description = """
@@ -15,7 +15,7 @@ This entrypoint works against data kept in the GBIF Checklist Bank which taxonom
 
 entrypoint = AgentEntrypoint(
     id="count_species_records",
-    description="Count species records with faceted statistics",
+    description=description,
     parameters=None,
 )
 

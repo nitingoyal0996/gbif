@@ -26,7 +26,7 @@ Parameters are provided by the upstream service and include search criteria plus
 
 entrypoint = AgentEntrypoint(
     id="count_occurrence_records",
-    description="Count occurrence records with facets",
+    description=description,
     parameters=None,
 )
 

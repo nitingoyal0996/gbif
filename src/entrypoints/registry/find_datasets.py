@@ -29,7 +29,7 @@ Results are ordered by relevance and can be filtered by dataset type, organizati
 
 entrypoint = AgentEntrypoint(
     id="find_datasets",
-    description="Search datasets, recordsets, and collections",
+    description=description,
     parameters=None,
 )
 

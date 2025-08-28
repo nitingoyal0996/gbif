@@ -18,7 +18,7 @@ The returned occurrence includes additional fields, not shown in the response be
 
 entrypoint = AgentEntrypoint(
     id="find_occurrence_by_id",
-    description="Find occurrence by ID",
+    description=description,
     parameters=None,
 )
 

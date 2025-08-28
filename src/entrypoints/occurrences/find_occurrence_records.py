@@ -21,7 +21,7 @@ Note:
 
 entrypoint = AgentEntrypoint(
     id="find_occurrence_records",
-    description="Find occurrence records",
+    description=description,
     parameters=None,
 )
 

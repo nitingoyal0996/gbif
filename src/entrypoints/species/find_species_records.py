@@ -16,7 +16,7 @@ This entrypoint works against data kept in the GBIF Checklist Bank which taxonom
 
 entrypoint = AgentEntrypoint(
     id="find_species_records",
-    description="Search species name usages",
+    description=description,
     parameters=None,
 )
 
