@@ -5,8 +5,6 @@ Other parameters:
 - limit: Use when the request specifies a number of results to return (default 20, max 100)
 - offset: Use for pagination when the request mentions "more results" or "next page"
 - q: Use for full-text search when the request is vague and none of the other specific parameters are available
-
-Do not use scientificName as a facet key.
 """
 
 SPECIES_PARAMETER_GUIDELINES = """
@@ -71,7 +69,7 @@ Key guidelines to prevent hallucination:
 - category: Use ONLY when the request mentions dataset categories or themes
 
 Faceting parameters:
-- facet: Use ONLY when the request mentions analysis, breakdowns, or statistical summaries
+- facet: Use ONLY when the request mentions analysis, breakdowns, or statistical summaries. Do not use any of [ scientificName ] as a facet key.
 - facetMinCount: Use ONLY when the request mentions minimum thresholds for analysis
 - facetMultiselect: Use ONLY when the request mentions multi-select filtering options
 
