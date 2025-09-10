@@ -12,6 +12,8 @@ from src.gbif.parser import parse, GBIFPath
 
 description = """
 This entrypoint works against data kept in the GBIF Checklist Bank which taxonomically indexes all registered checklist datasets in the GBIF network. And it provides services for full-text search of name usages covering the scientific and vernacular names, the species description, distribution and the entire classification across all name usages of all or some checklists. Results are ordered by relevance as this search usually returns a lot of results.
+
+This is to be used only when you need to search for species records. Do not use this entrypoint for other purposes such as counting or taxonomic information. Use the appropriate entrypoint for that.
 """
 
 entrypoint = AgentEntrypoint(
@@ -35,8 +37,10 @@ async def run(context: ResponseContext, request: str):
         )
 
         response = await parse(request, GBIFPath.SPECIES, GBIFSpeciesSearchParams)
+        logger.info(f"LLM Parsed Response: {response}")
         params = response.search_parameters
         description = response.artifact_description
+
         await process.log(
             "Generated search parameters",
             data=params.model_dump(exclude_defaults=True),
@@ -63,7 +67,14 @@ async def run(context: ResponseContext, request: str):
             await process.log(f"Data retrieval successful, status code {status_code}")
             await process.log("Processing response and preparing artifact...")
 
-            total = raw_response.get("count", 0)
+            page_info = {
+                "count": raw_response.get("count"),
+                "limit": raw_response.get("limit"),
+                "offset": raw_response.get("offset"),
+            }
+            await process.log(
+                "API pagination information of the response: ", data=page_info
+            )
             portal_url = api.build_portal_url(api_url)
 
             await process.create_artifact(
@@ -76,7 +87,7 @@ async def run(context: ResponseContext, request: str):
                 },
             )
 
-            summary = _generate_response_summary(total, portal_url)
+            summary = _generate_response_summary(page_info, portal_url)
             await context.reply(summary)
 
         except Exception as e:
@@ -93,11 +104,9 @@ async def run(context: ResponseContext, request: str):
             )
 
 
-def _generate_response_summary(total: int, portal_url: str) -> str:
-    if total > 0:
-        summary = (
-            f"I have successfully searched for species and found matching records. "
-        )
+def _generate_response_summary(page_info: dict, portal_url: str) -> str:
+    if page_info.get("count") > 0:
+        summary = f"I have found {page_info.get('count')} species records matching your criteria. "
     else:
         summary = "I have not found any species records matching your criteria. "
     summary += f"The results can also be viewed in the GBIF portal at {portal_url}."

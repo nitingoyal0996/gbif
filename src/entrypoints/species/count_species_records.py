@@ -6,11 +6,16 @@ from ichatbio.types import AgentEntrypoint
 from src.gbif.api import GbifApi
 from src.gbif.fetch import execute_request
 from src.models.entrypoints import GBIFSpeciesFacetsParams
-from src.log import with_logging
+from src.log import with_logging, logger
 from src.gbif.parser import parse, GBIFPath
 
 description = """
 This entrypoint works against data kept in the GBIF Checklist Bank which taxonomically indexes all registered checklist datasets in the GBIF network. And it provides services for counting species name usage records with statistical breakdowns by taxonomic, conservation, and nomenclatural dimensions.
+
+This is to be used only when you need to count species records. Do not use this entrypoint for other purposes such as searching or taxonomic information. Use the appropriate entrypoint for that.
+
+Examples:
+- Count number of species of Aves
 """
 
 entrypoint = AgentEntrypoint(
@@ -33,13 +38,14 @@ async def run(context: ResponseContext, request: str):
         )
 
         response = await parse(request, GBIFPath.SPECIES, GBIFSpeciesFacetsParams)
+        logger.info(f"LLM Parsed Response: {response}")
         params = response.search_parameters
         description = response.artifact_description
+
         await process.log(
             "Generated search and facet parameters: ",
             data=params.model_dump(exclude_defaults=True),
         )
-
         api = GbifApi()
         api_url = api.build_species_facets_url(params)
         await process.log(f"Generated API URL: {api_url}")
@@ -58,9 +64,17 @@ async def run(context: ResponseContext, request: str):
                 )
                 return
             await process.log(f"Data retrieval successful, status code {status_code}")
+            # create a log of some informative fields from the response about the record
+            page_info = {
+                "count": raw_response.get("count"),
+                "limit": raw_response.get("limit"),
+                "offset": raw_response.get("offset"),
+            }
+            await process.log(
+                "API pagination information of the response: ", data=page_info
+            )
             await process.log("Processing response and preparing artifact...")
 
-            total = raw_response.get("count", 0)
             portal_url = api.build_portal_url(api_url)
 
             await process.create_artifact(
@@ -73,7 +87,7 @@ async def run(context: ResponseContext, request: str):
                 },
             )
 
-            summary = _generate_response_summary(total, portal_url)
+            summary = _generate_response_summary(page_info, portal_url)
             await context.reply(summary)
 
         except Exception as e:
@@ -90,9 +104,9 @@ async def run(context: ResponseContext, request: str):
             )
 
 
-def _generate_response_summary(total: int, portal_url: str) -> str:
-    if total > 0:
-        summary = f"I have successfully retrieved species records. "
+def _generate_response_summary(page_info: dict, portal_url: str) -> str:
+    if page_info.get("count") > 0:
+        summary = f"I have found {page_info.get('count')} species records matching your criteria. "
     else:
         summary = "I have not found any species records matching your criteria. "
     summary += f"The results can also be viewed in the GBIF portal at {portal_url}."

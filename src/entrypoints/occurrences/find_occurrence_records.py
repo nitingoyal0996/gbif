@@ -81,8 +81,17 @@ async def run(context: ResponseContext, request: str):
                 )
                 return
             await process.log(f"Data retrieval successful, status code {status_code}")
+            # create a log of some informative fields from the response about the record
+            page_info = {
+                "count": raw_response.get("count"),
+                "limit": raw_response.get("limit"),
+                "offset": raw_response.get("offset"),
+            }
+            await process.log(
+                "API pagination information of the response: ", data=page_info
+            )
             await process.log("Processing response and preparing artifact...")
-            total = raw_response.get("count", 0)
+
             portal_url = api.build_portal_url(api_url)
             await process.create_artifact(
                 mimetype="application/json",
@@ -94,7 +103,7 @@ async def run(context: ResponseContext, request: str):
                 },
             )
 
-            summary = _generate_response_summary(total, portal_url)
+            summary = _generate_response_summary(page_info, portal_url)
 
             await context.reply(summary)
 
@@ -112,9 +121,9 @@ async def run(context: ResponseContext, request: str):
             )
 
 
-def _generate_response_summary(total: int, portal_url: str) -> str:
-    if total > 0:
-        summary = f"I have successfully searched for occurrences and matching records. "
+def _generate_response_summary(page_info: dict, portal_url: str) -> str:
+    if page_info.get("count") > 0:
+        summary = f"I have successfully searched for occurrences and matching records. Retreived {page_info.get('limit')} records per page, {page_info.get('offset')} records offset. Total records found: {page_info.get('count')}. "
     else:
         summary = "I have not found any occurrence records matching your criteria. "
     summary += f"The results can also be viewed in the GBIF portal at {portal_url}."

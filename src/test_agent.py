@@ -70,6 +70,7 @@ Q16 = "what about occurrence record 2430266710"
 Q17 = "Find datasets about Rattus rattus"
 Q18 = "can you summarize the travel and collecting history of Herbert H. Smith (including name variants like H.H. Smith, H. H. Smith, Herbert Smith) through the specimens he collected that are in GBIF?"
 Q19 = "please generate a timeline of Herbert H. Smith travels from collected data."
+Q20 = "Count the number of rattus species in canada."
 
 
 async def test_find_datasets():
@@ -88,6 +89,14 @@ async def test_find_occurrence_by_id():
     )
 
 
+async def test_count_occurrence_records():
+    context = SimpleInMemoryContext()
+    agent = GBIFAgent()
+    await agent.run(
+        context=context, request=Q4, params=None, entrypoint="count_occurrence_records"
+    )
+
+
 async def test_find_occurrence_records():
     context = SimpleInMemoryContext()
     agent = GBIFAgent()
@@ -96,11 +105,19 @@ async def test_find_occurrence_records():
     )
 
 
+async def test_count_species_records():
+    context = SimpleInMemoryContext()
+    agent = GBIFAgent()
+    await agent.run(
+        context=context, request=Q20, params=None, entrypoint="count_species_records"
+    )
+
+
 async def test_find_species_records():
     context = SimpleInMemoryContext()
     agent = GBIFAgent()
     await agent.run(
-        context=context, request=Q6, params=None, entrypoint="find_species_records"
+        context=context, request=Q18, params=None, entrypoint="find_species_records"
     )
 
 
@@ -120,8 +137,10 @@ async def run_all_tests():
         # await test_find_occurrence_records()
         # await test_find_occurrence_by_id()
         # await test_find_datasets()
-        # await test_find_species_records()
-        await test_species_taxonomic_information()
+        await test_find_species_records()
+        # await test_species_taxonomic_information()
+        # await test_count_occurrence_records()
+        # await test_count_species_records()
 
     except Exception as e:
         print(f"Test failed with error: {e}")

@@ -72,18 +72,20 @@ async def parse(
         "openai/gpt-4.1",
         async_client=True,
     )
+    messages = [
+        {
+            "role": "system",
+            "content": SYSTEM_PROMPT.format(
+                CURRENT_DATE=CURRENT_DATE,
+                PARAMETER_GUIDELINES=parameter_guidelines,
+                FIELD_NUANCES=FIELD_NUANCES,
+            ),
+        },
+        {"role": "user", "content": f"user request: {request}"},
+    ]
+
     response = await openai_client.chat.completions.create(
-        messages=[
-            {
-                "role": "system",
-                "content": SYSTEM_PROMPT.format(
-                    CURRENT_DATE=CURRENT_DATE,
-                    PARAMETER_GUIDELINES=parameter_guidelines,
-                    FIELD_NUANCES=FIELD_NUANCES,
-                ),
-            },
-            {"role": "user", "content": request},
-        ],
+        messages=messages,
         response_model=response_model,
     )
     return response

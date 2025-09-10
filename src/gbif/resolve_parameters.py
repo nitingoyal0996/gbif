@@ -27,7 +27,6 @@ async def resolve_names_to_taxonkeys(
             # Use the species match endpoint to resolve the name
             url = api.build_species_match_url(name)
             result = await execute_request(url)
-            print(f"Species Match API call result: {result}")
 
             # Check if we have a successful match in the 'usage' field
             if result.get("usage") and result.get("usage", {}).get("key"):

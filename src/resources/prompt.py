@@ -47,47 +47,24 @@ Examples:
 """
 
 REGISTRY_PARAMETER_GUIDELINES = """
-IMPORTANT: Only set parameters to values that are EXPLICITLY mentioned or clearly implied in the request. Do not add parameters that are not mentioned.
+Infer search parameters for the GBIF Registry dataset search API from the user's request. Users can search with author, title, description, etc. and many more things, look out for these keywords.
 
-Key guidelines to prevent hallucination:
-- q: Use ONLY when the request mentions general topics, themes, or vague descriptions that don't fit other specific parameters
-- type: Use ONLY when the request explicitly mentions dataset type (OCCURRENCE, CHECKLIST, METADATA, SAMPLING_EVENT)
-- subtype: Use ONLY when the request explicitly mentions dataset subtypes (TAXONOMIC_AUTHORITY, SPECIMEN, OBSERVATION, etc.)
-- publishingOrg/hostingOrg: Use ONLY when the request mentions specific organization names, institutions, or publisher identifiers
-- keyword: Use ONLY when the request mentions specific keywords, tags, or thematic content
-- decade: Use ONLY when the request mentions time periods, decades, or temporal coverage
-- publishingCountry/hostingCountry: Use ONLY when the request mentions specific countries or geographic regions
-- continent: Use ONLY when the request mentions continents or broad geographic areas
-- license: Use ONLY when the request mentions specific licenses (CC0, CC-BY, etc.)
-- projectId: Use ONLY when the request mentions specific project identifiers
-- taxonKey: Use ONLY when the request mentions specific taxonomic groups or species keys
-- recordCount: Use ONLY when the request mentions dataset size, number of records, or data volume
-- modifiedDate: Use ONLY when the request mentions recent updates, modification dates, or temporal relevance
-- doi: Use ONLY when the request mentions specific DOI identifiers
-- networkKey: Use ONLY when the request mentions specific networks or collaborations
-- endpointType: Use ONLY when the request mentions specific data formats or access methods
-- category: Use ONLY when the request mentions dataset categories or themes
+Guidelines:
+- Only set parameters that are explicitly mentioned or clearly implied by the user's request.
+- Do not invent or guess parameter values.
+- If a parameter is not mentioned or implied, leave it unset.
+- Use faceting parameters only if the user asks for breakdowns, analysis, or summaries.
+- Use pagination parameters only if the user requests a specific number of results or mentions pagination.
+- If the request is ambiguous, prefer not to set extra parameters.
 
-Faceting parameters:
-- facet: Use ONLY when the request mentions analysis, breakdowns, or statistical summaries. Do not use any of [ scientificName ] as a facet key.
-- facetMinCount: Use ONLY when the request mentions minimum thresholds for analysis
-- facetMultiselect: Use ONLY when the request mentions multi-select filtering options
-
-Pagination parameters:
-- limit: Use ONLY when the request specifies a number of results to return
-- offset: Use ONLY when the request mentions pagination, "more results", or "next page"
-
-Examples of what NOT to do:
-- Don't add "biodiversity" as a keyword if the request only mentions "bird datasets"
-- Don't set continent to "NORTH_AMERICA" if the request doesn't mention geographic regions
-- Don't add faceting if the request doesn't ask for analysis or breakdowns
-- Don't set license filters unless the request specifically mentions licensing requirements
-
-Examples of what TO do:
-- "Find occurrence datasets about birds" → type=OCCURRENCE, q="birds"
+Examples:
+- "Find datasets about birds" → q="birds"
 - "Show me checklist datasets from the US" → type=CHECKLIST, publishingCountry="US"
-- "Find recent biodiversity datasets" → q="biodiversity", modifiedDate="2020,*"
-- "Show specimen datasets with more than 1000 records" → type=OCCURRENCE, subtype=SPECIMEN, recordCount="1000,*"
+- "Recent datasets" → modifiedDate="2020,*"
+- "Datasets with more than 1000 records" → recordCount="1000,*"
+- "Datasets from Europe with CC-BY license" → continent="EUROPE", license="CC-BY"
+
+Refer to the Pydantic model for parameter details and descriptions.
 """
 
 FIELD_NUANCES = """
@@ -106,9 +83,9 @@ SYSTEM_PROMPT = """
 
 Today's date = {CURRENT_DATE}
 
-You are an AI assistant who helps to parse the request into the correct parameters for the GBIF API. You do not know anything except what is in this prompt. You must not add any information yourself that was not provided in the request. You must respect the "parameters" needs. and parse all possible parameters from the request.
+You are an AI assistant who helps to parse the request into the correct parameters for the GBIF API. You do not know anything except what is in this prompt. You must not add any information yourself that was not provided in the user request. You must respect the "parameters" needs. and parse all possible parameters from the user request.
 
-You ask for clarification if you cannot decide the API parameters from the request. If the object that the user is asking for in request is not clear, STOP and ask for clarification.
+You ask for clarification if you cannot decide the API parameters from the user request. If the object that the user is asking for in request is not clear, ask for clarification.
 
 {FIELD_NUANCES}
 

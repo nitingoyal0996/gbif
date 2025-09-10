@@ -50,6 +50,7 @@ async def run(context: ResponseContext, request: str):
         response = await parse(request, GBIFPath.REGISTRY, GBIFDatasetSearchParams)
         params = response.search_parameters
         description = response.artifact_description
+
         await process.log(
             "Generated search parameters",
             data=params.model_dump(exclude_defaults=True),
@@ -74,6 +75,7 @@ async def run(context: ResponseContext, request: str):
                 )
                 return
             await process.log(f"Data retrieval successful, status code {status_code}")
+
             await process.log("Processing response and preparing artifact...")
 
             total = raw_response.get("count", 0)

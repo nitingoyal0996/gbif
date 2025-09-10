@@ -65,6 +65,25 @@ async def run(context: ResponseContext, request: str):
                 )
                 return
             await process.log(f"Data retrieval successful, status code {status_code}")
+            # create a log of some informative fields from the response about the record
+            subset_response = {
+                "gbifID": raw_response.get("gbifID"),
+                "scientificName": raw_response.get("scientificName"),
+                "basisOfRecord": raw_response.get("basisOfRecord"),
+                "occurrenceStatus": raw_response.get("occurrenceStatus"),
+                "taxonomicStatus": raw_response.get("taxonomicStatus"),
+                "elevation": raw_response.get("elevation"),
+                "continent": raw_response.get("continent"),
+                "stateProvince": raw_response.get("stateProvince"),
+                "year": raw_response.get("year"),
+                "kingdom": raw_response.get("kingdom"),
+                "phylum": raw_response.get("phylum"),
+                "datasetKey": raw_response.get("datasetKey"),
+                "recordedBy": raw_response.get("recordedBy"),
+                "publishingCountry": raw_response.get("publishingCountry"),
+            }
+            await process.log("Subset of response: ", data=subset_response)
+
             await process.log("Processing response and preparing artifact...")
 
             portal_url = api.build_portal_url(api_url)

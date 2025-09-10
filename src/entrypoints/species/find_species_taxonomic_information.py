@@ -58,6 +58,12 @@ async def run(context: ResponseContext, request: str):
             return
 
         params = response.search_parameters
+        await process.log(
+            "occurrence search parameters does not support",
+            data={
+                "unavailable_parameters": response.unavailable_parameters_from_request
+            },
+        )
         api = GbifApi()
 
         await process.log(
