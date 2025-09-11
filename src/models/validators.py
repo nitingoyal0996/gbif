@@ -5,6 +5,7 @@ from src.models.entrypoints import (
     GBIFOccurrenceByIdParams,
     GBIFSpeciesSearchParams,
     GBIFSpeciesTaxonomicParams,
+    GBIFDatasetSearchParams,
 )
 
 
@@ -91,4 +92,16 @@ class SpeciesTaxonomicParamsValidator(
 ):
     VALIDATION_FIELDS: ClassVar[dict[str, str]] = {
         "key": "key or ID",
+    }
+
+
+class DatasetSearchParamsValidator(RequestValidationMixin, GBIFDatasetSearchParams):
+    VALIDATION_FIELDS: ClassVar[dict[str, str]] = {
+        "projectId": "key or ID",
+        "taxonKey": "key or ID",
+        "recordCount": "number",
+        "networkKey": "key or ID",
+        "endorsingNodeKey": "key or ID",
+        "installationKey": "key or ID",
+        "contactUserId": "key or ID",
     }

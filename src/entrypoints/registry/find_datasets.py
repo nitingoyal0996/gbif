@@ -5,26 +5,19 @@ from ichatbio.types import AgentEntrypoint
 
 from src.gbif.api import GbifApi
 from src.gbif.fetch import execute_request
-from src.models.entrypoints import GBIFDatasetSearchParams
+from src.models.validators import DatasetSearchParamsValidator
 from src.log import with_logging, logger
 from src.gbif.parser import parse, GBIFPath
 
 
 description = """
-This entrypoint works against the GBIF Registry, which handles dataset metadata. This entrypoint provides services for full-text search across all datasets with comprehensive filtering options.
+**Use Case:** Use this entrypoint to find datasets, collections, or other data sources in the GBIF Registry based on their metadata (e.g., title, publishing country, license).
 
-The GBIF Registry includes various types of data sources:
-- Datasets: The primary data containers that can include occurrences, checklists, metadata, or sampling events
-- Recordsets: Often synonymous with datasets, representing organized collections of data records
-- Collections: Primarily specimen-based datasets, though some collections may include observation records
+**Triggers On:** User requests to "find datasets," "search for collections," or "list data sources about" a topic. Also handles requests for summaries of datasets (e.g., "count of datasets by type").
 
-Important distinctions:
-- Occurrence datasets may contain specimen collections, observation records, or both
-- Observation records (occurrences without collected specimens) are not part of specimen collections
-- Checklist datasets focus on taxonomic information rather than individual occurrences
-- Metadata datasets provide descriptive information about other datasets
+**Crucial Distinction:** Use this tool only when the user is asking about the data containers (datasets) themselves, not the individual data points inside them (occurrences or species records).
 
-Results are ordered by relevance and can be filtered by dataset type, organization, geographic coverage, temporal coverage, license, and many other criteria. Faceting is also supported for analyzing result distributions.
+**Key Inputs:** A query string (q) and/or a wide variety of filters like type, keyword, publishingCountry, license, and taxonKey. It also supports faceting via the facet parameter.
 """
 
 entrypoint = AgentEntrypoint(
@@ -47,7 +40,12 @@ async def run(context: ResponseContext, request: str):
             f"Request received: {request}. Generating iChatBio for GBIF request parameters..."
         )
 
-        response = await parse(request, GBIFPath.REGISTRY, GBIFDatasetSearchParams)
+        response = await parse(request, GBIFPath.REGISTRY, DatasetSearchParamsValidator)
+        if response.clarification_needed:
+            await process.log("Stopping execution to clarify the request")
+            await context.reply(f"{response.clarification_reason}")
+            return
+
         params = response.search_parameters
         description = response.artifact_description
 

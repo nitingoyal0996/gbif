@@ -43,7 +43,11 @@ examples = {
         },
         {
             "user_request": "For all Panthera onca records in the US, what's the breakdown by year?",
-            "search_parameters": {"scientificName": "Panthera onca", "country": "US", "facet": ["year"]},
+            "search_parameters": {
+                "scientificName": "Panthera onca",
+                "country": "US",
+                "facet": ["year"],
+            },
             "clarification_needed": False,
             "clarification_reason": None,
         },
@@ -63,10 +67,14 @@ examples = {
         },
         {
             "user_request": "Find all endangered species of Panthera onca (scientific name)",
-            "search_parameters": {"q": "Panthera onca", "threat": "ENDANGERED", "qField": "SCIENTIFIC_NAME"},
+            "search_parameters": {
+                "q": "Panthera onca",
+                "threat": "ENDANGERED",
+                "qField": "SCIENTIFIC_NAME",
+            },
             "clarification_needed": False,
             "clarification_reason": None,
-        }
+        },
     ],
     "find_species_taxonomic_information": [
         {
@@ -77,9 +85,13 @@ examples = {
         },
         {
             "user_request": "child and parent taxa of Panthera onca",
-            "search_parameters": {"key": 5231190, "includeChildren": True, "includeParents": True},
+            "search_parameters": {
+                "key": 5231190,
+                "includeChildren": True,
+                "includeParents": True,
+            },
             "clarification_needed": False,
-            "clarification_reason": None
+            "clarification_reason": None,
         },
     ],
     "count_species_records": [
@@ -94,6 +106,44 @@ examples = {
             "search_parameters": None,
             "clarification_needed": True,
             "clarification_reason": "'Location' is too general for a statistical breakdown. I can count species by supported fields like `habitat`, `threat` status, or taxonomic `rank`. Which of these would you like to use?",
+        },
+    ],
+    "find_datasets": [
+        {
+            "user_request": "Search for datasets about marine biodiversity from Europe.",
+            "search_parameters": {"q": "marine biodiversity", "continent": "EUROPE"},
+            "clarification_needed": False,
+            "clarification_reason": None,
+        },
+        {
+            "user_request": "Show me all checklist datasets from the US.",
+            "search_parameters": {"type": "CHECKLIST", "publishingCountry": "US"},
+            "clarification_needed": False,
+            "clarification_reason": None,
+        },
+        {
+            "user_request": "Find datasets about migration.",
+            "search_parameters": None,
+            "clarification_needed": True,
+            "clarification_reason": "The keyword 'migration' is ambiguous. To get relevant results, please provide more specific criteria, such as a particular species (e.g., 'bird migration'), a geographic area, or another keyword.",
+        },
+        {
+            "user_request": "Find the most popular datasets about insects.",
+            "search_parameters": None,
+            "clarification_needed": True,
+            "clarification_reason": "I can't sort or rank datasets by 'popularity'. However, I can search for datasets using keywords or filter by criteria like the data type or publishing country.",
+        },
+        {
+            "user_request": "Show me the most interesting datasets.",
+            "search_parameters": None,
+            "clarification_needed": True,
+            "clarification_reason": "The term 'interesting' is subjective and I can't search for it directly. Could you please provide more concrete search criteria, such as a specific topic, keyword, or geographic area?",
+        },
+        {
+            "user_request": "Find me all checklist datasets that are also occurrence datasets.",
+            "search_parameters": None,
+            "clarification_needed": True,
+            "clarification_reason": "A dataset can only have one primary type at a time. Could you please clarify whether you are looking for 'checklist' datasets or 'occurrence' datasets?",
         },
     ],
 }
