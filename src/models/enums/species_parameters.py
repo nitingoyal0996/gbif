@@ -271,3 +271,9 @@ class IssueEnum(str, Enum):
     PUBLISHED_BEFORE_GENUS = "PUBLISHED_BEFORE_GENUS"
     UNPARSABLE = "UNPARSABLE"
     PARTIALLY_PARSABLE = "PARTIALLY_PARSABLE"
+
+
+class QueryFieldEnum(str, Enum):
+    SCIENTIFIC_NAME = "scientificName"
+    VERNACULAR_NAME = "vernacularName"
+    DESCRIPTION = "description"
