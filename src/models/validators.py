@@ -67,9 +67,7 @@ class OccurrenceSearchParamsValidator(
     }
 
 
-class OccurrenceFacetsParamsValidator(
-    RequestValidationMixin, OccurrenceSearchParamsValidator
-):
+class OccurrenceFacetsParamsValidator(OccurrenceSearchParamsValidator):
     pass
 
 
@@ -85,6 +83,10 @@ class SpeciesSearchParamsValidator(RequestValidationMixin, GBIFSpeciesSearchPara
         "datasetKey": "key or ID",
         "constituentKey": "key or ID",
     }
+
+
+class SpeciesFacetsParamsValidator(SpeciesSearchParamsValidator):
+    pass
 
 
 class SpeciesTaxonomicParamsValidator(
