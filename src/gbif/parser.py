@@ -3,7 +3,7 @@ import instructor
 
 from enum import Enum
 from pydantic import BaseModel, Field, create_model
-from typing import Type
+from typing import Type, Optional, List, Dict, Any
 
 from src.resources.prompt import (
     SYSTEM_PROMPT,
@@ -43,17 +43,35 @@ def create_response_model(parameter_model: Type[BaseModel]) -> Type[BaseModel]:
     return create_model(
         "LLMResponse",
         search_parameters=(
-            parameter_model,
-            Field(description="The search parameters for the API"),
+            Optional[parameter_model],
+            Field(
+                description="The search parameters for the API",
+                default=None,
+            ),
         ),
         artifact_description=(
-            str,
+            Optional[str],
             Field(
                 description="A concise characterization of the retrieved record statistics",
                 examples=[
                     "Per-country record counts for species Rattus rattus",
                     "Per-species record counts for records created in 2025",
                 ],
+                default=None,
+            ),
+        ),
+        clarification_needed=(
+            Optional[bool],
+            Field(
+                description="If you are unable to determine the parameter for the value provided in the user request, set this to True",
+                default=None,
+            ),
+        ),
+        clarification_reason=(
+            Optional[str],
+            Field(
+                description="The reason or a short note why the user request needs clarification about the parameter values",
+                default=None,
             ),
         ),
         __base__=BaseModel,
