@@ -5,15 +5,21 @@ from ichatbio.types import AgentEntrypoint
 
 from src.gbif.api import GbifApi
 from src.gbif.fetch import execute_request
-from src.models.entrypoints import GBIFSpeciesSearchParams
+from src.models.validators import SpeciesSearchParamsValidator
 from src.log import with_logging, logger
-from src.gbif.parser import parse, GBIFPath
+from src.gbif.parser import parse
 
 
 description = """
-This entrypoint works against data kept in the GBIF Checklist Bank which taxonomically indexes all registered checklist datasets in the GBIF network. And it provides services for full-text search of name usages covering the scientific and vernacular names, the species description, distribution and the entire classification across all name usages of all or some checklists. Results are ordered by relevance as this search usually returns a lot of results.
+**Use Case:** Use this entrypoint to find species using a general search term (like a common or scientific name) and discover their unique taxonomic keys (taxonKey). This is the primary tool for starting a taxonomic investigation.
 
-This is to be used only when you need to search for species records. Do not use this entrypoint for other purposes such as counting or taxonomic information. Use the appropriate entrypoint for that.
+**Triggers On:** User requests to "search for a species," "look up," or "find the taxon key for" a specific organism. It's the correct first step when the user has a name but not a specific GBIF ID.
+
+**Key Inputs:** A general query string (q). This can be made more precise by using qField to target either a SCIENTIFIC_NAME or a VERNACULAR_NAME (common name). Also accepts optional filters like rank or threat status.
+
+**Key Outputs:** A list of potential matching species, each with its essential usageKey (the taxonKey).
+
+**Crucial Distinction:** This tool finds potential matches from a name; it does not retrieve detailed hierarchies or count occurrences.
 """
 
 entrypoint = AgentEntrypoint(
@@ -36,7 +42,11 @@ async def run(context: ResponseContext, request: str):
             f"Request received: {request}. Generating iChatBio for GBIF request parameters..."
         )
 
-        response = await parse(request, GBIFPath.SPECIES, GBIFSpeciesSearchParams)
+        response = await parse(request, entrypoint.id, SpeciesSearchParamsValidator)
+        if response.clarification_needed:
+            await process.log("Stopping execution to clarify the request")
+            await context.reply(f"{response.clarification_reason}")
+            return
         logger.info(f"LLM Parsed Response: {response}")
         params = response.search_parameters
         description = response.artifact_description

@@ -20,20 +20,6 @@ description = """
 **Limitations:** This entrypoint only works with a GBIF ID. It cannot be used for general or filtered searches.
 """
 
-fewshot = [
-    {
-        "user_request": "Find information on jaguars",
-        "search_parameters": None,
-        "clarification_needed": True,
-        "clarification_reason": "To search for a specific species like 'jaguar,' I need its unique GBIF identifier to use this entrypoint.",
-    },
-    {
-        "user_request": "Find information on 1234567890",
-        "search_parameters": {"occurrenceId": "1234567890"},
-        "clarification_needed": False,
-        "clarification_reason": None,
-    },
-]
 
 entrypoint = AgentEntrypoint(
     id="find_occurrence_by_id",
@@ -56,7 +42,7 @@ async def run(context: ResponseContext, request: str):
         )
 
         response = await parse(
-            request, entrypoint.id, OccurrenceSearchByIdParamsValidator, fewshot
+            request, entrypoint.id, OccurrenceSearchByIdParamsValidator
         )
         if response.clarification_needed:
             await process.log("Stopping execution to clarify the request")

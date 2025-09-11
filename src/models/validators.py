@@ -1,6 +1,11 @@
 from pydantic import BaseModel, model_validator, ValidationInfo
 from typing import ClassVar
-from src.models.entrypoints import GBIFOccurrenceSearchParams, GBIFOccurrenceByIdParams
+from src.models.entrypoints import (
+    GBIFOccurrenceSearchParams,
+    GBIFOccurrenceByIdParams,
+    GBIFSpeciesSearchParams,
+    GBIFSpeciesTaxonomicParams,
+)
 
 
 class RequestValidationMixin(BaseModel):
@@ -61,7 +66,29 @@ class OccurrenceSearchParamsValidator(
     }
 
 
+class OccurrenceFacetsParamsValidator(
+    RequestValidationMixin, OccurrenceSearchParamsValidator
+):
+    pass
+
+
 class OccurrenceSearchByIdParamsValidator(RequestValidationMixin, GBIFOccurrenceByIdParams):
     VALIDATION_FIELDS: ClassVar[dict[str, str]] = {
-        "gbifId": "gbifId",
+        "gbifId": "key or ID",
+    }
+
+
+class SpeciesSearchParamsValidator(RequestValidationMixin, GBIFSpeciesSearchParams):
+    VALIDATION_FIELDS: ClassVar[dict[str, str]] = {
+        "higherTaxonKey": "key or ID",
+        "datasetKey": "key or ID",
+        "constituentKey": "key or ID",
+    }
+
+
+class SpeciesTaxonomicParamsValidator(
+    RequestValidationMixin, GBIFSpeciesTaxonomicParams
+):
+    VALIDATION_FIELDS: ClassVar[dict[str, str]] = {
+        "key": "key or ID",
     }

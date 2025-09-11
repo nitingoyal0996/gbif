@@ -5,17 +5,20 @@ from ichatbio.types import AgentEntrypoint
 
 from src.gbif.api import GbifApi
 from src.gbif.fetch import execute_request
-from src.models.entrypoints import GBIFSpeciesFacetsParams
+from src.models.validators import SpeciesFacetsParamsValidator
 from src.log import with_logging, logger
-from src.gbif.parser import parse, GBIFPath
+from src.gbif.parser import parse
 
 description = """
-This entrypoint works against data kept in the GBIF Checklist Bank which taxonomically indexes all registered checklist datasets in the GBIF network. And it provides services for counting species name usage records with statistical breakdowns by taxonomic, conservation, and nomenclatural dimensions.
+**Use Case:** Use this entrypoint to get statistical counts and summaries of species themselves, based on criteria like taxonomic rank, conservation status, or habitat.
 
-This is to be used only when you need to count species records. Do not use this entrypoint for other purposes such as searching or taxonomic information. Use the appropriate entrypoint for that.
+**Triggers On:** User requests asking "how many species," for a "count of species," a "breakdown of species by," or "statistics on" taxonomic groups.
 
-Examples:
-- Count number of species of Aves
+**Key Inputs:** One or more facet fields (e.g., rank, status, habitat).
+
+**Key Outputs:** Aggregated counts of species, not individual species data or their occurrences.
+
+**Crucial Distinction:** This is for counting taxonomic entities (e.g., "how many species of birds are endangered?"), not their real-world observations.
 """
 
 entrypoint = AgentEntrypoint(
@@ -37,7 +40,11 @@ async def run(context: ResponseContext, request: str):
             f"Request received: {request}. Generating iChatBio for GBIF request parameters..."
         )
 
-        response = await parse(request, GBIFPath.SPECIES, GBIFSpeciesFacetsParams)
+        response = await parse(request, entrypoint.id, SpeciesFacetsParamsValidator)
+        if response.clarification_needed:
+            await process.log("Stopping execution to clarify the request")
+            await context.reply(f"{response.clarification_reason}")
+            return
         logger.info(f"LLM Parsed Response: {response}")
         params = response.search_parameters
         description = response.artifact_description

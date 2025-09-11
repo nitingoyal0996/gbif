@@ -7,7 +7,7 @@ from src.models.entrypoints import GBIFSpeciesSearchParams, GBIFSpeciesTaxonomic
 from src.models.enums.species_parameters import TaxonomicStatusEnum, TaxonomicRankEnum
 from src.models.responses.species import NameUsage, PagingResponseNameUsage
 from src.log import with_logging, logger
-from src.gbif.parser import parse, GBIFPath
+from src.gbif.parser import parse
 
 from pydantic import BaseModel, Field
 from typing import List, Optional
@@ -19,12 +19,20 @@ load_dotenv()
 
 
 description = """
-This entrypoint allows you to retrieve detailed taxonomic information for a species using its GBIF usage key (taxon key). You can request basic information, taxonomic hierarchy (parents and children), and synonyms. Optional parameters—such as including synonyms, children, or parents—are only enabled if explicitly mentioned in the request. If only a species name is provided without a usage key, the system may ask for clarification. The entrypoint also supports pagination and limiting the number of results. This is useful for obtaining comprehensive or specific taxonomic data, such as full classification, synonyms, or child taxa for a given species.
+**Use Case:** Use this entrypoint to retrieve deep, taxonomic information (like the full parent hierarchy, child taxa, or synonyms) for a species that you have scientificName or taxonKey for.
+
+**Triggers On:** User requests to "get details for," "show the hierarchy for," "list synonyms of," or "find children/parent of" a species, when a specific taxonKey (usage key) or scientificName is provided.
+
+**Key Inputs:** A specific integer key (the species taxonKey).
+
+**Key Outputs:** A detailed taxonomic profile for one species.
+
+**Crucial Distinction:** The user must provide a taxonKey or a scientific name.
 """
 
 
 entrypoint = AgentEntrypoint(
-    id="species_taxonomic_information",
+    id="find_species_taxonomic_information",
     name="Species Taxonomic Information",
     description=description,
     examples=[
@@ -35,7 +43,7 @@ entrypoint = AgentEntrypoint(
 )
 
 
-@with_logging("species_taxonomic_information")
+@with_logging("find_species_taxonomic_information")
 async def run(context: ResponseContext, request: str):
     """
     Executes the species taxonomic information entrypoint. Retrieves comprehensive taxonomic
@@ -44,26 +52,16 @@ async def run(context: ResponseContext, request: str):
     async with context.begin_process(
         "Requesting GBIF Species Taxonomic Information"
     ) as process:
-        try:
-            await process.log(
-                f"Request received: {request}. Generating iChatBio for GBIF request parameters..."
-            )
-            response = await parse(request, GBIFPath.SPECIES_TAXONOMIC, parameters_model=GBIFSpeciesTaxonomicParams)
-        except Exception as e:
-            await process.log(
-                f"Failed to parse request parameters",
-                data={"error": str(e)},
-            )
-            await context.reply(f"Failed to parse request parameters: {str(e)}")
+        await process.log(
+            f"Request received: {request}. Generating iChatBio for GBIF request parameters..."
+        )
+        response = await parse(request, entrypoint.id, GBIFSpeciesTaxonomicParams)
+        if response.clarification_needed:
+            await process.log("Stopping execution to clarify the request")
+            await context.reply(f"{response.clarification_reason}")
             return
 
         params = response.search_parameters
-        await process.log(
-            "occurrence search parameters does not support",
-            data={
-                "unavailable_parameters": response.unavailable_parameters_from_request
-            },
-        )
         api = GbifApi()
 
         await process.log(
@@ -282,7 +280,10 @@ async def __search_species_by_name(
     try:
         raw_response = await execute_request(url)
         records = raw_response.get("results", [])
-        await process.log(f"Found {len(records)} matches for species name: {name}")
+        count = raw_response.get("count", 0)
+        await process.log(
+            f"Found {count} matches for species name: {name}, working with the first {len(records)}"
+        )
 
         species_matches: List[SpeciesMatch] = []
         for r in records:

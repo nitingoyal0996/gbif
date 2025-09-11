@@ -6,6 +6,7 @@ from ichatbio.types import AgentEntrypoint
 from src.gbif.api import GbifApi
 from src.gbif.fetch import execute_request
 from src.models.entrypoints import GBIFOccurrenceFacetsParams
+from src.models.validators import OccurrenceFacetsParamsValidator
 from src.log import with_logging
 
 from src.gbif.parser import parse
@@ -22,30 +23,6 @@ description = """
 **Limitations:** This entrypoint returns aggregated counts, not a list of individual records.
 """
 
-fewshot = [
-    {
-        "user_request": "Give me a count of all records by basis of record.",
-        "search_parameters": {"facet": ["basisOfRecord"]},
-        "clarification_needed": False,
-        "clarification_reason": None,
-    },
-    {
-        "user_request": "For all Panthera onca records in the US, what's the breakdown by year?",
-        "search_parameters": {
-            "scientificName": "Panthera onca",
-            "country": "US",
-            "facet": ["year"],
-        },
-        "clarification_needed": False,
-        "clarification_reason": None,
-    },
-    {
-        "user_request": "Break down the records by observer.",
-        "search_parameters": None,
-        "clarification_needed": True,
-        "clarification_reason": "I can create a breakdown by specific fields like 'recordedBy', 'country', or 'year'. Could you please clarify which field you'd like to use?",
-    },
-]
 
 entrypoint = AgentEntrypoint(
     id="count_occurrence_records",
@@ -66,9 +43,7 @@ async def run(context: ResponseContext, request: str):
         await process.log(
             f"Request recieved: {request}. Generating iChatBio for GBIF request parameters..."
         )
-        response = await parse(
-            request, entrypoint.id, GBIFOccurrenceFacetsParams, fewshot
-        )
+        response = await parse(request, entrypoint.id, OccurrenceFacetsParamsValidator)
         if response.clarification_needed:
             await process.log("Stopping execution to clarify the request")
             await context.reply(f"{response.clarification_reason}")
@@ -163,7 +138,7 @@ def _generate_response_summary(page_info: dict, portal_url: str) -> str:
 
 
 async def _update_search_params(
-    params: GBIFOccurrenceFacetsParams,
+    params: OccurrenceFacetsParamsValidator,
     taxon_keys: list,
     process: IChatBioAgentProcess,
 ) -> GBIFOccurrenceFacetsParams:

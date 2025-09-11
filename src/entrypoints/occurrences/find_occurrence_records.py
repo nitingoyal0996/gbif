@@ -22,28 +22,6 @@ description = """
 **Limitations:** This entrypoint does not perform summaries or counts. It also does not sort the results.
 """
 
-fewshot = [
-    {
-        "user_request": "Find occurrences of jaguars",
-        "search_parameters": None,
-        "clarification_needed": True,
-        "clarification_reason": "I need either scientificName or taxonKey to search for occurrences.",
-    },
-    {
-        "user_request": "Find occurrences of Panthera onca in the US",
-        "search_parameters": {"scientificName": "Panthera onca", "country": "US"},
-        "clarification_needed": False,
-        "clarification_reason": None,
-    },
-    {
-        "user_request": "Find occurrences of Panthera onca in the Plam Spring, CA in 2020",
-        "search_parameters": None,
-        "clarification_needed": True,
-        "clarification_reason": "I need latitude and longitude of Plam Spring, CA to search for occurrences.",
-    },
-]
-
-
 entrypoint = AgentEntrypoint(
     id="find_occurrence_records",
     description=description,
@@ -65,12 +43,7 @@ async def run(context: ResponseContext, request: str):
             f"Request recieved: {request}. Generating iChatBio for GBIF request parameters..."
         )
 
-        response = await parse(
-            request,
-            entrypoint.id,
-            OccurrenceSearchParamsValidator,
-            fewshot
-        )
+        response = await parse(request, entrypoint.id, OccurrenceSearchParamsValidator)
 
         if response.clarification_needed:
             await process.log("Stopping execution to clarify the request")
