@@ -1,5 +1,4 @@
 import uuid
-from pydantic import BaseModel, model_validator, ValidationInfo
 
 from ichatbio.agent_response import ResponseContext, IChatBioAgentProcess
 from ichatbio.types import AgentEntrypoint
@@ -7,8 +6,9 @@ from ichatbio.types import AgentEntrypoint
 from src.gbif.api import GbifApi
 from src.gbif.fetch import execute_request
 from src.models.entrypoints import GBIFOccurrenceSearchParams
+from src.models.validators import OccurrenceSearchParamsValidator
 from src.log import with_logging, logger
-from src.gbif.parser import parse, GBIFPath
+from src.gbif.parser import parse
 from src.gbif.resolve_parameters import resolve_names_to_taxonkeys
 
 
@@ -44,61 +44,6 @@ fewshot = [
 ]
 
 
-# mixin for validation
-class InstructorValidationMixin(BaseModel):
-    @model_validator(mode="after")
-    def validate_values_are_from_request(self, info: ValidationInfo):
-        user_request = info.context.get("user_request")
-        if not user_request:
-            return self
-
-        # Explicitly check for latitude, longitude, and all keys/IDs
-        key_fields = [
-            "decimalLatitude",
-            "decimalLongitude",
-            "taxonKey",
-            "datasetKey",
-            "kingdomKey",
-            "phylumKey",
-            "classKey",
-            "orderKey",
-            "familyKey",
-            "speciesKey",
-            "genusKey",
-            "occurrenceId",
-            "eventId",
-            "recordNumber",
-            "collectionCode",
-            "institutionCode",
-            "catalogNumber",
-        ]
-        # throw error if there is no value
-        if not any(self.model_dump().values()):
-            raise ValueError("No values provided for any parameter")
-        for field, value in self.model_dump().items():
-            if value is None:
-                continue
-            if field in key_fields:
-                values_to_check = value if isinstance(value, list) else [value]
-                for v in values_to_check:
-                    if str(v).lower() not in user_request.lower():
-                        if field in ["decimalLatitude", "decimalLongitude"]:
-                            raise ValueError(
-                                f"The value '{v}' for field '{field}' (latitude/longitude) was not found in the original request. "
-                                "You must provide explicit latitude and longitude values; they cannot be inferred or made up."
-                            )
-                        else:
-                            raise ValueError(
-                                f"The value '{v}' for field '{field}' (key or ID) was not found in the original request. "
-                                "You must provide explicit keys or IDs; they cannot be inferred or made up."
-                            )
-        return self
-
-
-class OccurrenceSearchParams(InstructorValidationMixin, GBIFOccurrenceSearchParams):
-    pass
-
-
 entrypoint = AgentEntrypoint(
     id="find_occurrence_records",
     description=description,
@@ -120,7 +65,12 @@ async def run(context: ResponseContext, request: str):
             f"Request recieved: {request}. Generating iChatBio for GBIF request parameters..."
         )
 
-        response = await parse(request, entrypoint.id, OccurrenceSearchParams, fewshot)
+        response = await parse(
+            request,
+            entrypoint.id,
+            OccurrenceSearchParamsValidator,
+            fewshot
+        )
 
         if response.clarification_needed:
             await process.log("Stopping execution to clarify the request")

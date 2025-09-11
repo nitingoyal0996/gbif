@@ -8,7 +8,7 @@ from src.gbif.fetch import execute_request
 from src.models.entrypoints import GBIFOccurrenceFacetsParams
 from src.log import with_logging
 
-from src.gbif.parser import parse, GBIFPath
+from src.gbif.parser import parse
 from src.gbif.resolve_parameters import resolve_names_to_taxonkeys
 
 

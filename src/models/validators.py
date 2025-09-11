@@ -1,0 +1,67 @@
+from pydantic import BaseModel, model_validator, ValidationInfo
+from typing import ClassVar
+from src.models.entrypoints import GBIFOccurrenceSearchParams, GBIFOccurrenceByIdParams
+
+
+class RequestValidationMixin(BaseModel):
+    """Generic mixin to ensure model values appear in the original user request."""
+
+    # Override this in subclasses
+    VALIDATION_FIELDS: ClassVar[dict[str, str]] = {}
+
+    @model_validator(mode="after")
+    def validate_values_are_from_request(self, info: ValidationInfo):
+        user_request = (info.context or {}).get("user_request")
+        if not user_request:
+            return self
+
+        values = self.model_dump()
+
+        if not any(values.values()):
+            raise ValueError("No values provided for any parameter")
+
+        for field, value in values.items():
+            if value is None or field not in self.VALIDATION_FIELDS:
+                continue
+
+            # normalize scalar → list
+            candidates = value if isinstance(value, list) else [value]
+            for v in candidates:
+                if str(v).lower() not in user_request.lower():
+                    context = self.VALIDATION_FIELDS[field]
+                    raise ValueError(
+                        f"The value '{v}' for field '{field}' ({context}) "
+                        f"was not found in the original request. "
+                        "You must provide explicit values; they cannot be inferred or made up."
+                    )
+        return self
+
+
+class OccurrenceSearchParamsValidator(
+    RequestValidationMixin, GBIFOccurrenceSearchParams
+):
+    VALIDATION_FIELDS: ClassVar[dict[str, str]] = {
+        "decimalLatitude": "latitude/longitude",
+        "decimalLongitude": "latitude/longitude",
+        "taxonKey": "key or ID",
+        "datasetKey": "key or ID",
+        "kingdomKey": "key or ID",
+        "phylumKey": "key or ID",
+        "classKey": "key or ID",
+        "orderKey": "key or ID",
+        "familyKey": "key or ID",
+        "speciesKey": "key or ID",
+        "genusKey": "key or ID",
+        "occurrenceId": "key or ID",
+        "eventId": "key or ID",
+        "recordNumber": "key or ID",
+        "collectionCode": "key or ID",
+        "institutionCode": "key or ID",
+        "catalogNumber": "key or ID",
+    }
+
+
+class OccurrenceSearchByIdParamsValidator(RequestValidationMixin, GBIFOccurrenceByIdParams):
+    VALIDATION_FIELDS: ClassVar[dict[str, str]] = {
+        "gbifId": "gbifId",
+    }

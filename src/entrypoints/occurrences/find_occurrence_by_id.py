@@ -5,9 +5,9 @@ from ichatbio.types import AgentEntrypoint
 
 from src.gbif.api import GbifApi
 from src.gbif.fetch import execute_request
-from src.models.entrypoints import GBIFOccurrenceByIdParams
+from src.models.validators import OccurrenceSearchByIdParamsValidator
 from src.log import with_logging, logger
-from src.gbif.parser import parse, GBIFPath
+from src.gbif.parser import parse
 
 
 description = """
@@ -56,7 +56,7 @@ async def run(context: ResponseContext, request: str):
         )
 
         response = await parse(
-            request, entrypoint.id, GBIFOccurrenceByIdParams, fewshot
+            request, entrypoint.id, OccurrenceSearchByIdParamsValidator, fewshot
         )
         if response.clarification_needed:
             await process.log("Stopping execution to clarify the request")
@@ -79,6 +79,15 @@ async def run(context: ResponseContext, request: str):
             await process.log("Querying GBIF for occurrence data...")
             raw_response = await execute_request(api_url)
             status_code = raw_response.get("status_code", 200)
+            if status_code == 404:
+                await process.log(
+                    "GBIF ID not found",
+                    data=raw_response,
+                )
+                await context.reply(
+                    "GBIF ID is not valid",
+                )
+                return
             if status_code != 200:
                 await process.log(
                     f"Data retrieval failed with status code {status_code}",
