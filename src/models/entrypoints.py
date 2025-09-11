@@ -23,6 +23,7 @@ from .enums.species_parameters import (
     TypeStatusEnum,
     NomenclaturalStatusEnum,
     IssueEnum,
+    QueryFieldEnum,
 )
 
 from .enums.registry_parameters import (
@@ -46,18 +47,6 @@ class GBIFOccurrenceBaseParams(ProductionBaseModel):
             ["Homo sapiens", "Canis lupus"],
             ["Puma concolor"],
         ],
-    )
-
-    q: Optional[str] = Field(
-        None,
-        description="Simple full-text search parameter. The value for this parameter can be a simple word or a phrase. Wildcards are not supported. Full-text search fields include: title, keyword, country, publishing country, publishing organization title, hosting organization title, and description.",
-        examples=["plant", "bird observation", "mammal specimen"],
-    )
-
-    hl: Optional[bool] = Field(
-        None,
-        description="Set hl=true to highlight terms matching the query when in full-text search fields. The highlight will be an emphasis tag of class gbifH1 e.g. /search?q=plant&hl=true. Full-text search fields include: title, keyword, country, publishing country, publishing organization title, hosting organization title, and description. One additional full text field is searched which includes information from metadata documents, but the text of this field is not returned in the response.",
-        examples=[True],
     )
 
     occurrenceId: Optional[List[str]] = Field(
@@ -126,12 +115,6 @@ class GBIFOccurrenceBaseParams(ProductionBaseModel):
     )
 
     # Geographic filters
-    country: Optional[List[str]] = Field(
-        None,
-        description="The 2-letter country code (as per ISO-3166-1) of the country in which the occurrence was recorded.",
-        examples=[["US"], ["GB", "FR", "DE"], ["AF", "ZA", "KE"]],
-    )
-
     continent: Optional[List[ContinentEnum]] = Field(
         None,
         description="Continent, as defined in our Continent vocabulary. The continent, based on a 7 continent model described on Wikipedia and the World Geographical Scheme for Recording Plant Distributions (WGSRPD). This splits the Americas into North and South America with North America including the Caribbean (except Trinidad and Tobago) and reaching down and including Panama.",
@@ -140,6 +123,18 @@ class GBIFOccurrenceBaseParams(ProductionBaseModel):
             [ContinentEnum.NORTH_AMERICA, ContinentEnum.SOUTH_AMERICA],
             [ContinentEnum.AFRICA, ContinentEnum.ASIA],
         ],
+    )
+
+    country: Optional[List[str]] = Field(
+        None,
+        description="The 2-letter country code (as per ISO-3166-1) of the country in which the occurrence was recorded.",
+        examples=[["US"], ["GB", "FR", "DE"], ["AF", "ZA", "KE"]],
+    )
+
+    stateProvince: Optional[List[str]] = Field(
+        None,
+        description="The name of the next smaller administrative region than country (state, province, canton, department, region, etc.) in which the Location occurs. This term does not have any data quality checks; see also the GADM parameters. Parameter may be repeated.",
+        examples=[["Leicestershire"]],
     )
 
     gbifRegion: Optional[List[GbifRegionEnum]] = Field(
@@ -208,7 +203,7 @@ class GBIFOccurrenceBaseParams(ProductionBaseModel):
     # Temporal filters
     year: Optional[str] = Field(
         None,
-        description="The 4 digit year. A year of 98 will be interpreted as AD 98. Supports range queries using comma-separated values. For instance: year='2020,2023' will return all records from 2020 and 2023 (not including 2021 and 2022). To express a range 'from YYY1 to YYY3', use the format 'YYY1,YYY3'.",
+        description="The 4 digit year. A year of 98 will be interpreted as AD 98. Supports range queries using comma-separated values. For instance: year='2020,2023' will return all records from 2020 and 2023 (not including 2021 and 2022). To express a range 'from YYY1 to YYY3' or 'YYY1, YYY2, YYY3', use the format 'YYY1,YYY3'. It does not support * wildcard.",
         examples=["2020", "2010,2020", "1998,2005"],
     )
 
@@ -238,31 +233,45 @@ class GBIFOccurrenceBaseParams(ProductionBaseModel):
 
     # Taxonomic filters
     kingdomKey: Optional[List[int]] = Field(
-        None, description="Kingdom classification key.", examples=[[5], [1, 2, 3]]
+        None,
+        description="Kingdom classification key. Do not make up this parameter value. It must be explicitly mentioned in the user request.",
+        examples=[[5], [1, 2, 3]],
     )
 
     phylumKey: Optional[List[int]] = Field(
-        None, description="Phylum classification key.", examples=[[44], [1, 2, 3]]
+        None,
+        description="Phylum classification key. Do not make up this parameter value. It must be explicitly mentioned in the user request.",
+        examples=[[44], [1, 2, 3]],
     )
 
     classKey: Optional[List[int]] = Field(
-        None, description="Class classification key.", examples=[[212], [1, 2, 3]]
+        None,
+        description="Class classification key. Do not make up this parameter value. It must be explicitly mentioned in the user request.",
+        examples=[[212], [1, 2, 3]],
     )
 
     orderKey: Optional[List[int]] = Field(
-        None, description="Order classification key.", examples=[[1448], [1, 2, 3]]
+        None,
+        description="Order classification key. Do not make up this parameter value. It must be explicitly mentioned in the user request.",
+        examples=[[1448], [1, 2, 3]],
     )
 
     familyKey: Optional[List[int]] = Field(
-        None, description="Family classification key.", examples=[[2405], [1, 2, 3]]
+        None,
+        description="Family classification key. Do not make up this parameter value. It must be explicitly mentioned in the user request.",
+        examples=[[2405], [1, 2, 3]],
     )
 
     genusKey: Optional[List[int]] = Field(
-        None, description="Genus classification key.", examples=[[2877951], [1, 2, 3]]
+        None,
+        description="Genus classification key. Do not make up this parameter value. It must be explicitly mentioned in the user request.",
+        examples=[[2877951], [1, 2, 3]],
     )
 
     speciesKey: Optional[List[int]] = Field(
-        None, description="Species classification key.", examples=[[2476674], [1, 2, 3]]
+        None,
+        description="Species classification key. Do not make up this parameter value. It must be explicitly mentioned in the user request.",
+        examples=[[2476674], [1, 2, 3]],
     )
 
     taxonomicStatus: Optional[TaxonomicStatusEnum] = Field(
@@ -486,7 +495,7 @@ class GBIFSpeciesSearchParams(ProductionBaseModel):
     # Core search parameters
     q: Optional[str] = Field(
         None,
-        description="Simple full text search parameter covering scientific and vernacular names, species descriptions, distribution and entire classification. The value can be a simple word or phrase. Wildcards are not supported. Results are ordered by relevance.",
+        description="Simple full text search parameter covering scientific and vernacular names, species descriptions, distribution and entire classification. The value can be a simple word or phrase. Wildcards are not supported. Results are ordered by relevance. Only use this parameter if the user's request is vague and none of the other specific parameters are available.",
         examples=[
             "Puma concolor",
             "jaguar",
@@ -494,6 +503,16 @@ class GBIFSpeciesSearchParams(ProductionBaseModel):
             "oak tree",
             "Panthera tigris",
             "endangered cats",
+        ],
+    )
+
+    qField: Optional[QueryFieldEnum] = Field(
+        description="Use it along with q parameter. Limits the q parameter to search in a specific field. Use it to narrow down the results. Use SCIENTIFIC_NAME when you know or have a good estimate of the scientific name of the species you are searching for. Use VERNACULAR_NAME when you want to find a species using its common name, which can vary by region or language. Use DESCRIPTION when you are looking for a species based on a keyword found in its general description rather than its name.",
+        default=QueryFieldEnum.VERNACULAR_NAME,
+        examples=[
+            QueryFieldEnum.VERNACULAR_NAME,
+            QueryFieldEnum.SCIENTIFIC_NAME,
+            QueryFieldEnum.DESCRIPTION,
         ],
     )
 
@@ -750,7 +769,7 @@ class GBIFDatasetSearchParams(ProductionBaseModel):
     # Core search parameters
     q: Optional[str] = Field(
         None,
-        description="Simple full text search parameter. The value for this parameter can be a simple word or a phrase. Wildcards are not supported.",
+        description="Simple full text search parameter. The value for this parameter can be a simple word or a phrase. Wildcards are not supported. Only use this parameter if the user's request is vague and none of the other specific parameters are available.",
         examples=["bird observations", "plant specimens", "marine biodiversity"],
     )
 
