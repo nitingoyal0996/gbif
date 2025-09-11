@@ -11,10 +11,29 @@ from src.gbif.parser import parse, GBIFPath
 
 
 description = """
-This entrypoint works against the GBIF Occurrence Store, which handles occurrence records. This entrypoint provides services for retrieving a single occurrence record by its unique GBIF ID.
+**Use Case:** Use this entrypoint to retrieve one single, specific occurrence record by its unique GBIF identifier.
 
-The returned occurrence includes additional fields, not shown in the response below. They are verbatim fields which are not interpreted by GBIF's system, e.g. `location`. The names are the short Darwin Core Term names.
+- **Triggers On:** User requests to "get details for ID," "look up occurrence," or "find record" when a specific GBIF ID (a number) is provided in the query.
+
+**Key Inputs:** Requires a single, unique gbifId.
+
+**Limitations:** This entrypoint only works with a GBIF ID. It cannot be used for general or filtered searches.
 """
+
+fewshot = [
+    {
+        "user_request": "Find information on jaguars",
+        "search_parameters": None,
+        "clarification_needed": True,
+        "clarification_reason": "To search for a specific species like 'jaguar,' I need its unique GBIF identifier to use this entrypoint.",
+    },
+    {
+        "user_request": "Find information on 1234567890",
+        "search_parameters": {"occurrenceId": "1234567890"},
+        "clarification_needed": False,
+        "clarification_reason": None,
+    },
+]
 
 entrypoint = AgentEntrypoint(
     id="find_occurrence_by_id",
@@ -37,8 +56,13 @@ async def run(context: ResponseContext, request: str):
         )
 
         response = await parse(
-            request, GBIFPath.OCCURRENCE_BY_ID, GBIFOccurrenceByIdParams
+            request, entrypoint.id, GBIFOccurrenceByIdParams, fewshot
         )
+        if response.clarification_needed:
+            await process.log("Stopping execution to clarify the request")
+            await context.reply(f"{response.clarification_reason}")
+            return
+
         params = response.search_parameters
         description = response.artifact_description
         await process.log(

@@ -13,14 +13,39 @@ from src.gbif.resolve_parameters import resolve_names_to_taxonkeys
 
 
 description = """
-This works against the GBIF Occurrence Store, which handles occurrence records. This entrypoint provides services for counting occurrence records with faceted statistics that have been indexed by GBIF. This entrypoint can help generate timelines and geographic distributions by faceting on fields. For example, it can trace collector travels by faceting on recordedBy, year, and country. It can also help with location-based analysis of species and occurrence records.
+**Use Case:** Use this entrypoint to get statistical summaries, counts, and breakdowns of occurrence data using facets. This is the tool for aggregation, not for fetching individual records.
 
-Counts occurrence records and provides faceted statistics using the GBIF occurrences API. Returns the total number of records found, breakdown by specified facets, the URL constructed to query the GBIF occurrences API, and a URL to view the results on the GBIF web portal.
+**Triggers On:** User requests that may ask "how many," for a "count of," a "breakdown by," a "summary of," or the "distribution of" records.
 
-Parameters are provided by the upstream service and include search criteria plus facet specifications:
-- Search filters (same as find_occurrence_records)
-- Facet fields to analyze (country, year, etc.)
+**Key Inputs:** Requires one or more facet fields (e.g., country, year, basisOfRecord) to group the data. Can be combined with search filters like scientificName.
+
+**Limitations:** This entrypoint returns aggregated counts, not a list of individual records.
 """
+
+fewshot = [
+    {
+        "user_request": "Give me a count of all records by basis of record.",
+        "search_parameters": {"facet": ["basisOfRecord"]},
+        "clarification_needed": False,
+        "clarification_reason": None,
+    },
+    {
+        "user_request": "For all Panthera onca records in the US, what's the breakdown by year?",
+        "search_parameters": {
+            "scientificName": "Panthera onca",
+            "country": "US",
+            "facet": ["year"],
+        },
+        "clarification_needed": False,
+        "clarification_reason": None,
+    },
+    {
+        "user_request": "Break down the records by observer.",
+        "search_parameters": None,
+        "clarification_needed": True,
+        "clarification_reason": "I can create a breakdown by specific fields like 'recordedBy', 'country', or 'year'. Could you please clarify which field you'd like to use?",
+    },
+]
 
 entrypoint = AgentEntrypoint(
     id="count_occurrence_records",
@@ -41,7 +66,14 @@ async def run(context: ResponseContext, request: str):
         await process.log(
             f"Request recieved: {request}. Generating iChatBio for GBIF request parameters..."
         )
-        response = await parse(request, GBIFPath.OCCURRENCE, GBIFOccurrenceFacetsParams)
+        response = await parse(
+            request, entrypoint.id, GBIFOccurrenceFacetsParams, fewshot
+        )
+        if response.clarification_needed:
+            await process.log("Stopping execution to clarify the request")
+            await context.reply(f"{response.clarification_reason}")
+            return
+
         params = response.search_parameters
         description = response.artifact_description
         await process.log(

@@ -1,4 +1,5 @@
 import uuid
+from pydantic import BaseModel, model_validator, ValidationInfo
 
 from ichatbio.agent_response import ResponseContext, IChatBioAgentProcess
 from ichatbio.types import AgentEntrypoint
@@ -12,12 +13,91 @@ from src.gbif.resolve_parameters import resolve_names_to_taxonkeys
 
 
 description = """
-This entrypoint works against the GBIF Occurrence Store, which handles occurrence records. This entrypoint provides services for searching occurrence records that have been indexed by GBIF. Location based analysis of species and occurrence records is also supported.
+**Use Case:** Use this entrypoint to search for and retrieve a list of individual occurrence records that match specific filters. This is the primary tool for fetching raw data.
 
-Note:
-- Year is a 4 digit year. A year of 98 will be interpreted as AD 98. Supports range queries. For instance: year='2020,2023' will return all records from 2020 and 2023.
-- Month is the month of the year, starting with 1 for January. Supports range queries. For instance: month='5,12' will return all records from May to December.
+**Triggers On:** User requests that may ask to "find," "list," or "show records of" something. It's for when the user wants to see the actual data entries, not a summary of them. It may also ask for records of a specific species, location, or time period.
+
+**Key Inputs:** Requires specific search criteria like scientificName, taxonKey, country, year, or geographic coordinates (latitude, longitude).
+
+**Limitations:** This entrypoint does not perform summaries or counts. It also does not sort the results.
 """
+
+fewshot = [
+    {
+        "user_request": "Find occurrences of jaguars",
+        "search_parameters": None,
+        "clarification_needed": True,
+        "clarification_reason": "I need either scientificName or taxonKey to search for occurrences.",
+    },
+    {
+        "user_request": "Find occurrences of Panthera onca in the US",
+        "search_parameters": {"scientificName": "Panthera onca", "country": "US"},
+        "clarification_needed": False,
+        "clarification_reason": None,
+    },
+    {
+        "user_request": "Find occurrences of Panthera onca in the Plam Spring, CA in 2020",
+        "search_parameters": None,
+        "clarification_needed": True,
+        "clarification_reason": "I need latitude and longitude of Plam Spring, CA to search for occurrences.",
+    },
+]
+
+
+# mixin for validation
+class InstructorValidationMixin(BaseModel):
+    @model_validator(mode="after")
+    def validate_values_are_from_request(self, info: ValidationInfo):
+        user_request = info.context.get("user_request")
+        if not user_request:
+            return self
+
+        # Explicitly check for latitude, longitude, and all keys/IDs
+        key_fields = [
+            "decimalLatitude",
+            "decimalLongitude",
+            "taxonKey",
+            "datasetKey",
+            "kingdomKey",
+            "phylumKey",
+            "classKey",
+            "orderKey",
+            "familyKey",
+            "speciesKey",
+            "genusKey",
+            "occurrenceId",
+            "eventId",
+            "recordNumber",
+            "collectionCode",
+            "institutionCode",
+            "catalogNumber",
+        ]
+        # throw error if there is no value
+        if not any(self.model_dump().values()):
+            raise ValueError("No values provided for any parameter")
+        for field, value in self.model_dump().items():
+            if value is None:
+                continue
+            if field in key_fields:
+                values_to_check = value if isinstance(value, list) else [value]
+                for v in values_to_check:
+                    if str(v).lower() not in user_request.lower():
+                        if field in ["decimalLatitude", "decimalLongitude"]:
+                            raise ValueError(
+                                f"The value '{v}' for field '{field}' (latitude/longitude) was not found in the original request. "
+                                "You must provide explicit latitude and longitude values; they cannot be inferred or made up."
+                            )
+                        else:
+                            raise ValueError(
+                                f"The value '{v}' for field '{field}' (key or ID) was not found in the original request. "
+                                "You must provide explicit keys or IDs; they cannot be inferred or made up."
+                            )
+        return self
+
+
+class OccurrenceSearchParams(InstructorValidationMixin, GBIFOccurrenceSearchParams):
+    pass
+
 
 entrypoint = AgentEntrypoint(
     id="find_occurrence_records",
@@ -39,7 +119,14 @@ async def run(context: ResponseContext, request: str):
         await process.log(
             f"Request recieved: {request}. Generating iChatBio for GBIF request parameters..."
         )
-        response = await parse(request, GBIFPath.OCCURRENCE, GBIFOccurrenceSearchParams)
+
+        response = await parse(request, entrypoint.id, OccurrenceSearchParams, fewshot)
+
+        if response.clarification_needed:
+            await process.log("Stopping execution to clarify the request")
+            await context.reply(f"{response.clarification_reason}")
+            return
+
         params = response.search_parameters
         description = response.artifact_description
         await process.log(
@@ -63,6 +150,8 @@ async def run(context: ResponseContext, request: str):
                 await process.log(
                     "Failed to resolve any scientific names to taxon keys, using original parameters"
                 )
+
+        logger.info(f"Search parameters: {search_params}")
 
         api_url = api.build_occurrence_search_url(search_params)
         await process.log(f"Constructed API URL: {api_url}")

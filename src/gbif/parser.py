@@ -13,6 +13,8 @@ from src.resources.prompt import (
     REGISTRY_PARAMETER_GUIDELINES,
     FIELD_NUANCES,
 )
+from src.resources.prompt_v2 import SYSTEM_PROMPT_V2
+from src.resources.fewshot import examples
 
 from dotenv import load_dotenv
 
@@ -80,30 +82,40 @@ def create_response_model(parameter_model: Type[BaseModel]) -> Type[BaseModel]:
 
 async def parse(
     request: str,
-    path: GBIFPath,
+    entrypoint_id: str,
     parameters_model: Type[BaseModel],
+    fewshot: Optional[List[Dict[str, Any]]] = None,
 ) -> Type[BaseModel]:
-    parameter_guidelines = PARAMETER_GUIDELINES[path]
     response_model = create_response_model(parameters_model)
 
     openai_client = instructor.from_provider(
         "openai/gpt-4.1",
         async_client=True,
     )
+
+    prompt = SYSTEM_PROMPT_V2.format(
+        CURRENT_DATE=CURRENT_DATE,
+        REQUEST_PARSING_EXAMPLES=(fewshot if fewshot else examples[entrypoint_id]),
+    )
+
     messages = [
         {
             "role": "system",
-            "content": SYSTEM_PROMPT.format(
-                CURRENT_DATE=CURRENT_DATE,
-                PARAMETER_GUIDELINES=parameter_guidelines,
-                FIELD_NUANCES=FIELD_NUANCES,
-            ),
+            "content": prompt,
         },
-        {"role": "user", "content": f"user request: {request}"},
+        {
+            "role": "user",
+            "content": f"user request: {request}",
+        },
     ]
+
+    instructor_validation_context = {
+        "user_request": request,
+    }
 
     response = await openai_client.chat.completions.create(
         messages=messages,
         response_model=response_model,
+        validation_context=instructor_validation_context,
     )
     return response
