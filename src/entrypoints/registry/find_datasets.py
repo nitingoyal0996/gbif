@@ -7,7 +7,7 @@ from src.gbif.api import GbifApi
 from src.gbif.fetch import execute_request
 from src.models.validators import DatasetSearchParamsValidator
 from src.log import with_logging, logger
-from src.gbif.parser import parse, GBIFPath
+from src.gbif.parser import parse
 
 
 description = """
@@ -40,7 +40,7 @@ async def run(context: ResponseContext, request: str):
             f"Request received: {request}. Generating iChatBio for GBIF request parameters..."
         )
 
-        response = await parse(request, GBIFPath.REGISTRY, DatasetSearchParamsValidator)
+        response = await parse(request, entrypoint.id, DatasetSearchParamsValidator)
         if response.clarification_needed:
             await process.log("Stopping execution to clarify the request")
             await context.reply(f"{response.clarification_reason}")
