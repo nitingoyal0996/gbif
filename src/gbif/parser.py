@@ -1,5 +1,4 @@
 import datetime
-import json
 import instructor
 
 from pydantic import BaseModel, Field, create_model
@@ -56,26 +55,17 @@ def create_response_model(parameter_model: Type[BaseModel]) -> Type[BaseModel]:
 
 
 def get_example_messages(entrypoint_id: str) -> List[Dict[str, Any]]:
-    """Convert examples to properly formatted message pairs"""
+    # convert the fewshot examples to messages
     messages = []
-
-    for idx, example in enumerate(examples[entrypoint_id]):
-        # Add user message (the request)
-        messages.append(
-            {"role": "user", "content": example["response"]["user_request"]}
-        )
-
-        # Add assistant response (structured output + reasoning)
-        assistant_content = {
-            "search_parameters": example["response"]["search_parameters"],
-            "artifact_description": example["response"].get("artifact_description"),
-            "reasoning": example["reasoning"],
-        }
-
-        messages.append(
-            {"role": "assistant", "content": json.dumps(assistant_content, indent=2)}
-        )
-
+    for example, idx in enumerate(examples[entrypoint_id]):
+        e = f"""
+        Example {idx + 1}:
+        User Request: {example["response"]["user_request"]}
+        Parsed Search Parameters: {example["response"]["search_parameters"] if example["response"]["search_parameters"] else "None"}
+        Reasoning: {example["reasoning"]}
+        \n\n
+        """
+        messages.append(e)
     return messages
 
 
@@ -86,25 +76,36 @@ async def parse(
 ) -> Type[BaseModel]:
     response_model = create_response_model(parameters_model)
 
-    openai_client = instructor.from_provider("openai/gpt-4.1", async_client=True)
+    openai_client = instructor.from_provider(
+        "openai/gpt-4.1",
+        async_client=True,
+    )
 
-    # Build messages with proper few-shot structure
+    prompt = SYSTEM_PROMPT_V2.format(
+        CURRENT_DATE=CURRENT_DATE,
+    )
+
     messages = [
         {
             "role": "system",
-            "content": SYSTEM_PROMPT_V2.format(CURRENT_DATE=CURRENT_DATE),
-        }
+            "content": prompt,
+        },
+        {
+            "role": "user",
+            "content": "Few shot examples: + "
+            + "\n".join(get_example_messages(entrypoint_id)),
+        },
+        {
+            "role": "user",
+            "content": f"Generate GBIF Request Parameters for the following user request: {request}",
+        },
     ]
 
-    # Add few-shot examples as conversation pairs
-    example_messages = get_example_messages(entrypoint_id)
-    messages.extend(example_messages)
-
-    messages.append({"role": "user", "content": request})
+    instructor_validation_context = {"user_request": request}
 
     response = await openai_client.chat.completions.create(
         messages=messages,
         response_model=response_model,
-        validation_context={"user_request": request},
+        validation_context=instructor_validation_context,
     )
     return response
