@@ -61,6 +61,12 @@ class GBIFOccurrenceBaseParams(ProductionBaseModel):
         examples=[[2476674], [2877951, 212], [44, 212, 1448]],
     )
 
+    acceptedTaxonKey: Optional[List[int]] = Field(
+        None,
+        description="A taxon key from the GBIF backbone or the specified checklist (see checklistKey parameter). Only synonym taxa are included in the search, so a search for Aves with acceptedTaxonKey=212 (i.e. /occurrence/search?taxonKey=212) will match occurrences identified as birds, but not any known family, genus or species of bird. Parameter may be repeated.",
+        examples=[[2476674]],
+    )
+
     basisOfRecord: Optional[List[BasisOfRecordEnum]] = Field(
         None,
         description="Basis of record, as defined in our BasisOfRecord vocabulary. The values of the Darwin Core term Basis of Record which can apply to occurrences.",
@@ -115,6 +121,42 @@ class GBIFOccurrenceBaseParams(ProductionBaseModel):
     )
 
     # Geographic filters
+    # gadmGid: Optional[List[str]] = Field(
+    #     None,
+    #     description="A GADM geographic identifier at any level, for example AGO, AGO.1_1, AGO.1.1_1 or AGO.1.1.1_1",
+    #     examples=[["AGO.1_1"]],
+    # )
+
+    # gadmLevel0Gid: Optional[List[str]] = Field(
+    #     None,
+    #     description="A GADM geographic identifier at the zero level, for example AGO.",
+    #     examples=[["AGO"]],
+    # )
+
+    # gadmLevel1Gid: Optional[List[str]] = Field(
+    #     None,
+    #     description="A GADM geographic identifier at the first level, for example AGO.1_1.",
+    #     examples=[["AGO.1_1"]],
+    # )
+
+    # gadmLevel2Gid: Optional[List[str]] = Field(
+    #     None,
+    #     description="A GADM geographic identifier at the second level, for example AFG.1.1_1.",
+    #     examples=[["AFG.1.1_1"]],
+    # )
+
+    # gadmLevel3Gid: Optional[List[str]] = Field(
+    #     None,
+    #     description="A GADM geographic identifier at the third level, for example AFG.1.1.1_1.",
+    #     examples=[["AFG.1.1.1_1"]],
+    # )
+
+    waterBody: Optional[List[str]] = Field(
+        None,
+        description="The name of the water body in which the Location occurs.",
+        examples=[["Atlantic Ocean"]],
+    )
+
     continent: Optional[List[ContinentEnum]] = Field(
         None,
         description="Continent, as defined in our Continent vocabulary. The continent, based on a 7 continent model described on Wikipedia and the World Geographical Scheme for Recording Plant Distributions (WGSRPD). This splits the Americas into North and South America with North America including the Caribbean (except Trinidad and Tobago) and reaching down and including Panama.",
@@ -137,6 +179,18 @@ class GBIFOccurrenceBaseParams(ProductionBaseModel):
         examples=[["Leicestershire"]],
     )
 
+    island: Optional[List[str]] = Field(
+        None,
+        description="The name of the island on or near which the location occurs.",
+        examples=[["Zanzibar"]],
+    )
+
+    islandGroup: Optional[List[str]] = Field(
+        None,
+        description="The name of the island group in which the location occurs.",
+        examples=[["Seychelles"]],
+    )
+
     gbifRegion: Optional[List[GbifRegionEnum]] = Field(
         None,
         description="Gbif region based on country code. Parameter may be repeated.",
@@ -144,6 +198,24 @@ class GBIFOccurrenceBaseParams(ProductionBaseModel):
             [GbifRegionEnum.AFRICA],
             [GbifRegionEnum.NORTH_AMERICA, GbifRegionEnum.ANTARCTICA],
         ],
+    )
+
+    higherGeography: Optional[List[str]] = Field(
+        None,
+        description="Geographic name less specific than the information captured in the locality term. Parameter may be repeated.",
+        examples=[["Argentina"]],
+    )
+
+    highestBiostratigraphicZone: Optional[List[str]] = Field(
+        None,
+        description="The full name of the highest possible geological biostratigraphic zone of the stratigraphic horizon from which the material entity was collected. Parameter may be repeated.",
+        examples=[["Blancan"]],
+    )
+
+    locality: Optional[List[str]] = Field(
+        None,
+        description="The specific description of the place. Use this when user insists on a locality name instead providing coordinates.",
+        examples=[["Miami-Dade County, Florida"]],
     )
 
     decimalLatitude: Optional[str] = Field(
@@ -192,6 +264,12 @@ class GBIFOccurrenceBaseParams(ProductionBaseModel):
         None,
         description="Elevation (altitude) in metres above sea level. Parameter may be repeated or a range.",
         examples=[[1000, 1250]],
+    )
+
+    georeferencedBy: Optional[List[str]] = Field(
+        None,
+        description="Name of a person, group, or organization who determined the georeference (spatial representation) for the location.",
+        examples=[["Brad Millen"]],
     )
 
     depth: Optional[int] = Field(
@@ -395,6 +473,210 @@ class GBIFOccurrenceBaseParams(ProductionBaseModel):
         ],
     )
 
+    lastInterpreted: Optional[List[str]] = Field(
+        None,
+        description="""This date the record was last modified in GBIF, in ISO 8601 format: yyyy, yyyy-MM, yyyy-MM-dd, or MM-dd.
+        
+        Note that this is the date the record was last changed in GBIF, not necessarily the date the record was first/last changed by the publisher. Data is re-interpreted when we change the taxonomic backbone, geographic data sources, or interpretation processes.
+        
+        Parameter may be repeated or a range.""",
+        examples=[["2023-02"]],
+    )
+
+    # Other organism and specimen features
+    sex: Optional[List[str]] = Field(
+        None,
+        description="The sex of the biological individual(s) represented in the occurrence.",
+        examples=[["MALE"]],
+    )
+
+    lifeStage: Optional[List[str]] = Field(
+        None,
+        description="The age class or life stage of an organism at the time the occurrence was recorded, as defined in the GBIF LifeStage vocabulary](https://registry.gbif.org/vocabulary/LifeStage/concepts).",
+        examples=[["JUVENILE"]],
+    )
+
+    preparations: Optional[List[str]] = Field(
+        None,
+        description="Preparation or preservation method for a specimen.",
+        examples=[["pinned"]],
+    )
+
+    previousIdentifications: Optional[List[str]] = Field(
+        None,
+        description="Previous assignment of name to the organism.",
+        examples=[["Chalepidae"]],
+    )
+
+    # material sample
+    # associatedSequences: Optional[List[str]] = Field(
+    #     None,
+    #     description="Identifier (publication, global unique identifier, URI) of genetic sequence information associated with the material entity. Parameter may be repeated.",
+    #     examples=[["http://www.ncbi.nlm.nih.gov/nuccore/U34853.1"]],
+    # )
+
+    # earliestEonOrLowestEonothem: Optional[List[str]] = Field(
+    #     None,
+    #     description="The full name of the earliest possible geochronologic era or lowest chronostratigraphic erathem attributable to the stratigraphic horizon from which the material entity was collected. Parameter may be repeated.",
+    #     examples=[["Mesozoic"]],
+    # )
+
+    # earliestEraOrLowestErathem: Optional[List[str]] = Field(
+    #     None,
+    #     description="The full name of the latest possible geochronologic eon or highest chrono-stratigraphic eonothem or the informal name ('Precambrian') attributable to the stratigraphic horizon from which the material entity was collected. Parameter may be repeated.",
+    #     examples=[["Proterozoic"]],
+    # )
+
+    # earliestPeriodOrLowestSystem: Optional[List[str]] = Field(
+    #     None,
+    #     description="The full name of the earliest possible geochronologic period or lowest chronostratigraphic system attributable to the stratigraphic horizon from which the material entity was collected. Parameter may be repeated.",
+    #     examples=[["Neogene"]],
+    # )
+
+    # earliestPeriodOrLowestSystem: Optional[List[str]] = Field(
+    #     None,
+    #     description="The full name of the earliest possible geochronologic period or lowest chronostratigraphic system attributable to the stratigraphic horizon from which the material entity was collected. Parameter may be repeated.",
+    #     examples=[["Neogene"]],
+    # )
+
+    # earliestEpochOrLowestSeries: Optional[List[str]] = Field(
+    #     None,
+    #     description="The full name of the earliest possible geochronologic epoch or lowest chronostratigraphic series attributable to the stratigraphic horizon from which the material entity was collected. Parameter may be repeated.",
+    #     examples=[["Holocene"]],
+    # )
+
+    # earliestEraOrLowestErathem: Optional[List[str]] = Field(
+    #     None,
+    #     description="The full name of the latest possible geochronologic eon or highest chrono-stratigraphic eonothem or the informal name ('Precambrian') attributable to the stratigraphic horizon from which the material entity was collected. Parameter may be repeated.",
+    #     examples=[["Proterozoic"]],
+    # )
+
+    # earliestPeriodOrLowestSystem: Optional[List[str]] = Field(
+    #     None,
+    #     description="The full name of the earliest possible geochronologic period or lowest chronostratigraphic system attributable to the stratigraphic horizon from which the material entity was collected. Parameter may be repeated.",
+    #     examples=[["Neogene"]],
+    # )
+
+    # earliestEpochOrLowestSeries: Optional[List[str]] = Field(
+    #     None,
+    #     description="The full name of the earliest possible geochronologic epoch or lowest chronostratigraphic series attributable to the stratigraphic horizon from which the material entity was collected. Parameter may be repeated.",
+    #     examples=[["Holocene"]],
+    # )
+
+    # earliestAgeOrLowestStage: Optional[List[str]] = Field(
+    #     None,
+    #     description="The full name of the earliest possible geochronologic age or lowest chronostratigraphic stage attributable to the stratigraphic horizon from which the material entity was collected. Parameter may be repeated.",
+    #     examples=[["Skullrockian"]],
+    # )
+
+    # formation: Optional[List[str]] = Field(
+    #     None,
+    #     description="The full name of the lithostratigraphic formation from which the material entity was collected. Parameter may be repeated.",
+    #     examples=[["Notch Peak Formation"]],
+    # )
+
+    # group: Optional[List[str]] = Field(
+    #     None,
+    #     description="The full name of the lithostratigraphic group from which the material entity was collected. Parameter may be repeated.",
+    #     examples=[["Bathurst"]],
+    # )
+
+    # highestBiostratigraphicZone: Optional[List[str]] = Field(
+    #     None,
+    #     description="The full name of the highest possible geological biostratigraphic zone of the stratigraphic horizon from which the material entity was collected. Parameter may be repeated.",
+    #     examples=[["Blancan"]],
+    # )
+
+    # latestEonOrHighestEonothem: Optional[List[str]] = Field(
+    #     None,
+    #     description="The full name of the latest possible geochronologic eon or highest chrono-stratigraphic eonothem or the informal name ('Precambrian') attributable to the stratigraphic horizon from which the material entity was collected. Parameter may be repeated.",
+    #     examples=[["Proterozoic"]],
+    # )
+
+    # latestEraOrHighestErathem: Optional[List[str]] = Field(
+    #     None,
+    #     description="The full name of the latest possible geochronologic era or highest chronostratigraphic erathem attributable to the stratigraphic horizon from which the material entity was collected. Parameter may be repeated.",
+    #     examples=[["Cenozoic"]],
+    # )
+
+    # latestPeriodOrHighestSystem: Optional[List[str]] = Field(
+    #     None,
+    #     description="The full name of the latest possible geochronologic period or highest chronostratigraphic system attributable to the stratigraphic horizon from which the material entity was collected. Parameter may be repeated.",
+    #     examples=[["Neogene"]],
+    # )
+
+    # latestEonOrHighestEonothem: Optional[List[str]] = Field(
+    #     None,
+    #     description="The full name of the latest possible geochronologic eon or highest chrono-stratigraphic eonothem or the informal name ('Precambrian') attributable to the stratigraphic horizon from which the material entity was collected. Parameter may be repeated.",
+    #     examples=[["Proterozoic"]],
+    # )
+
+    # latestEraOrHighestErathem: Optional[List[str]] = Field(
+    #     None,
+    #     description="The full name of the latest possible geochronologic era or highest chronostratigraphic erathem attributable to the stratigraphic horizon from which the material entity was collected. Parameter may be repeated.",
+    #     examples=[["Cenozoic"]],
+    # )
+
+    # latestPeriodOrHighestSystem: Optional[List[str]] = Field(
+    #     None,
+    #     description="The full name of the latest possible geochronologic period or highest chronostratigraphic system attributable to the stratigraphic horizon from which the material entity was collected. Parameter may be repeated.",
+    #     examples=[["Neogene"]],
+    # )
+
+    # latestEpochOrHighestSeries: Optional[List[str]] = Field(
+    #     None,
+    #     description="The full name of the latest possible geochronologic epoch or highest chronostratigraphic series attributable to the stratigraphic horizon from which the material entity was collected. Parameter may be repeated.",
+    #     examples=[["Pleistocene"]],
+    # )
+
+    # latestPeriodOrHighestSystem: Optional[List[str]] = Field(
+    #     None,
+    #     description="The full name of the latest possible geochronologic period or highest chronostratigraphic system attributable to the stratigraphic horizon from which the material entity was collected. Parameter may be repeated.",
+    #     examples=[["Neogene"]],
+    # )
+
+    # latestEpochOrHighestSeries: Optional[List[str]] = Field(
+    #     None,
+    #     description="The full name of the latest possible geochronologic epoch or highest chronostratigraphic series attributable to the stratigraphic horizon from which the material entity was collected. Parameter may be repeated.",
+    #     examples=[["Pleistocene"]],
+    # )
+
+    # latestAgeOrHighestStage: Optional[List[str]] = Field(
+    #     None,
+    #     description="The full name of the latest possible geochronologic age or highest chronostratigraphic stage attributable to the stratigraphic horizon from which the material entity was collected. Parameter may be repeated.",
+    #     examples=[["Boreal"]],
+    # )
+
+    # lowestBiostratigraphicZone: Optional[List[str]] = Field(
+    #     None,
+    #     description="The full name of the lowest possible geological biostratigraphic zone of the stratigraphic horizon from which the material entity was collected. Parameter may be repeated.",
+    #     examples=[["Maastrichtian"]],
+    # )
+
+    # member: Optional[List[str]] = Field(
+    #     None,
+    #     description="The full name of the lithostratigraphic member from which the material entity was collected. Parameter may be repeated.",
+    #     examples=[["Lava Dam Member"]],
+    # )
+
+    # latestAgeOrHighestStage: Optional[List[str]] = Field(
+    #     None,
+    #     description="The full name of the latest possible geochronologic age or highest chronostratigraphic stage attributable to the stratigraphic horizon from which the material entity was collected. Parameter may be repeated.",
+    #     examples=[["Boreal"]],
+    # )
+
+    # lowestBiostratigraphicZone: Optional[List[str]] = Field(
+    #     None,
+    #     description="The full name of the lowest possible geological biostratigraphic zone of the stratigraphic horizon from which the material entity was collected. Parameter may be repeated.",
+    #     examples=[["Maastrichtian"]],
+    # )
+
+    member: Optional[List[str]] = Field(
+        None,
+        description="The full name of the lithostratigraphic member from which the material entity was collected. Parameter may be repeated.",
+        examples=[["Lava Dam Member"]],
+    )
+
     # Pagination parameters
     limit: Optional[int] = Field(
         100,
@@ -409,46 +691,6 @@ class GBIFOccurrenceBaseParams(ProductionBaseModel):
         le=100000,
         description="Determines the offset for the search results. A limit of 20 and offset of 40 will get the third page of 20 results. This service has a maximum offset of 100,000.",
     )
-
-    @field_validator("decimalLatitude")
-    @classmethod
-    def validate_latitude(cls, v: Optional[str]) -> Optional[str]:
-        if v is None:
-            return v
-        # Handle range format (e.g., "40.5,45")
-        parts = v.split(",")
-        for part in parts:
-            try:
-                lat = float(part.strip())
-                if lat < -90 or lat > 90:
-                    raise ValueError(
-                        f"Latitude must be between -90 and 90 degrees, got {lat}"
-                    )
-            except ValueError as e:
-                if "must be between" not in str(e):
-                    raise ValueError(f"Invalid latitude format: {part}")
-                raise
-        return v
-
-    @field_validator("decimalLongitude")
-    @classmethod
-    def validate_longitude(cls, v: Optional[str]) -> Optional[str]:
-        if v is None:
-            return v
-        # Handle range format (e.g., "-120,-95.5")
-        parts = v.split(",")
-        for part in parts:
-            try:
-                lon = float(part.strip())
-                if lon < -180 or lon > 180:
-                    raise ValueError(
-                        f"Longitude must be between -180 and 180 degrees, got {lon}"
-                    )
-            except ValueError as e:
-                if "must be between" not in str(e):
-                    raise ValueError(f"Invalid longitude format: {part}")
-                raise
-        return v
 
 
 class GBIFOccurrenceSearchParams(GBIFOccurrenceBaseParams):
