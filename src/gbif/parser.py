@@ -1,41 +1,16 @@
 import datetime
+import json
 import instructor
 
-from enum import Enum
 from pydantic import BaseModel, Field, create_model
 from typing import Type, Optional, List, Dict, Any
 
-from src.resources.prompt import (
-    SYSTEM_PROMPT,
-    OCCURRENCE_PARAMETER_GUIDELINES,
-    SPECIES_PARAMETER_GUIDELINES,
-    SPECIES_TAXONOMIC_PARAMETER_GUIDELINES,
-    REGISTRY_PARAMETER_GUIDELINES,
-    FIELD_NUANCES,
-)
 from src.resources.prompt_v2 import SYSTEM_PROMPT_V2
 from src.resources.fewshot import examples
 
 from dotenv import load_dotenv
 
 load_dotenv()
-
-
-class GBIFPath(Enum):
-    OCCURRENCE = "occurrence"
-    SPECIES = "species"
-    SPECIES_TAXONOMIC = "species_taxonomic"
-    OCCURRENCE_BY_ID = "occurrence_by_id"
-    REGISTRY = "registry"
-
-
-PARAMETER_GUIDELINES = {
-    GBIFPath.OCCURRENCE: OCCURRENCE_PARAMETER_GUIDELINES,
-    GBIFPath.SPECIES: SPECIES_PARAMETER_GUIDELINES,
-    GBIFPath.SPECIES_TAXONOMIC: SPECIES_TAXONOMIC_PARAMETER_GUIDELINES,
-    GBIFPath.OCCURRENCE_BY_ID: OCCURRENCE_PARAMETER_GUIDELINES,
-    GBIFPath.REGISTRY: REGISTRY_PARAMETER_GUIDELINES,
-}
 
 
 CURRENT_DATE = datetime.datetime.now().strftime("%B %d, %Y")
@@ -80,42 +55,56 @@ def create_response_model(parameter_model: Type[BaseModel]) -> Type[BaseModel]:
     )
 
 
+def get_example_messages(entrypoint_id: str) -> List[Dict[str, Any]]:
+    """Convert examples to properly formatted message pairs"""
+    messages = []
+
+    for idx, example in enumerate(examples[entrypoint_id]):
+        # Add user message (the request)
+        messages.append(
+            {"role": "user", "content": example["response"]["user_request"]}
+        )
+
+        # Add assistant response (structured output + reasoning)
+        assistant_content = {
+            "search_parameters": example["response"]["search_parameters"],
+            "artifact_description": example["response"].get("artifact_description"),
+            "reasoning": example["reasoning"],
+        }
+
+        messages.append(
+            {"role": "assistant", "content": json.dumps(assistant_content, indent=2)}
+        )
+
+    return messages
+
+
 async def parse(
     request: str,
     entrypoint_id: str,
     parameters_model: Type[BaseModel],
-    fewshot: Optional[List[Dict[str, Any]]] = None,
 ) -> Type[BaseModel]:
     response_model = create_response_model(parameters_model)
 
-    openai_client = instructor.from_provider(
-        "openai/gpt-4.1",
-        async_client=True,
-    )
+    openai_client = instructor.from_provider("openai/gpt-4.1", async_client=True)
 
-    prompt = SYSTEM_PROMPT_V2.format(
-        CURRENT_DATE=CURRENT_DATE,
-        REQUEST_PARSING_EXAMPLES=(fewshot if fewshot else examples[entrypoint_id]),
-    )
-
+    # Build messages with proper few-shot structure
     messages = [
         {
             "role": "system",
-            "content": prompt,
-        },
-        {
-            "role": "user",
-            "content": f"user request: {request}",
-        },
+            "content": SYSTEM_PROMPT_V2.format(CURRENT_DATE=CURRENT_DATE),
+        }
     ]
 
-    instructor_validation_context = {
-        "user_request": request,
-    }
+    # Add few-shot examples as conversation pairs
+    example_messages = get_example_messages(entrypoint_id)
+    messages.extend(example_messages)
+
+    messages.append({"role": "user", "content": request})
 
     response = await openai_client.chat.completions.create(
         messages=messages,
         response_model=response_model,
-        validation_context=instructor_validation_context,
+        validation_context={"user_request": request},
     )
     return response

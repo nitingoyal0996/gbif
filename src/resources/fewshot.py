@@ -1,37 +1,57 @@
 # Few shot examples for entrypoints
+# These can be refined to be more specific to how
+# iChatBio provides the request to the entrypoint
 examples = {
     "find_occurrence_by_id": [
         {
-            "user_request": "Find information on jaguars",
-            "search_parameters": None,
-            "clarification_needed": True,
-            "clarification_reason": "To search for a specific species like 'jaguar,' I need its unique GBIF identifier to use this entrypoint.",
+            "response": {
+                "user_request": "Find information on jaguars",
+                "search_parameters": None,
+                "clarification_needed": True,
+                "clarification_reason": "To search for a specific species like 'jaguar,' I need its unique GBIF identifier to use this entrypoint.",
+            },
+            "reasoning": "This tool requires a single numeric `gbifId`. The user provided a value ('jaguars') which is a string/name and does not match with any required parameter. The necessary input is missing, so I must ask for clarification.",
         },
         {
-            "user_request": "Find information on 1234567890",
-            "search_parameters": {"occurrenceId": "1234567890"},
-            "clarification_needed": False,
-            "clarification_reason": None,
+            "response": {
+                "user_request": "Find information on 1234567890",
+                "search_parameters": {"gbifId": "1234567890"},
+                "clarification_needed": False,
+                "clarification_reason": None,
+            },
+            "reasoning": "This tool requires a single numeric `gbifId`. The user provided a value ('1234567890') whose type (a long number) matches the model type. This allows me to confidently populate the `gbifId` parameter.",
         },
     ],
     "find_occurrence_records": [
         {
-            "user_request": "Find occurrences of jaguars",
-            "search_parameters": None,
-            "clarification_needed": True,
-            "clarification_reason": "I need either scientificName or taxonKey to search for occurrences.",
+            "response": {
+                "user_request": "Find occurrences of jaguars",
+                "search_parameters": None,
+                "clarification_needed": True,
+                "clarification_reason": "I need either an exact scientificName or a taxonKey to search for occurrences.",
+            },
+            "reasoning": "'Jaguars' does not seem like a `scientificName`. Further, there is no `taxonKey` provided in the reqquest. Since the input parameters are either not clear or missing, I must ask for clarification.",
         },
         {
-            "user_request": "Find occurrences of Panthera onca in the US",
-            "search_parameters": {"scientificName": "Panthera onca", "country": "US"},
-            "clarification_needed": False,
-            "clarification_reason": None,
+            "response": {
+                "user_request": "Find occurrences of jaguar (Panthera onca) in the United States",
+                "search_parameters": {
+                    "scientificName": "Panthera onca",
+                    "country": "US",
+                },
+                "clarification_needed": False,
+                "clarification_reason": None,
+            },
+            "reasoning": "User is asking for records of Jaguar, while this seems like a common name, name - Panthera onca - in the bracket seems like a scientific name. The user provided an exact `scientificName` ('Panthera onca') and a valid `country` parameter value United States which corresponds to the ISO 3166-1 code 'US'. So, I don't need more assistance to generate the search parameters.",
         },
         {
-            "user_request": "Find occurrences of Panthera onca in the Plam Spring, CA in 2020",
-            "search_parameters": None,
-            "clarification_needed": True,
-            "clarification_reason": "I need latitude and longitude of Plam Spring, CA to search for occurrences.",
+            "response": {
+                "user_request": "Find occurrences of Panthera onca in Palm Springs, CA in 2020",
+                "search_parameters": None,
+                "clarification_needed": True,
+                "clarification_reason": "I need the latitude and longitude for 'Palm Springs, CA' to search in such a specific area. If coordinates are not available, please ask to use `locality` parameter instead",
+            },
+            "reasoning": "The tool can filter by broad regions like `country` or `stateProvince`, but a precise location like a city requires numeric `latitude` and `longitude` parameters. The user provided a place name ('Palm Springs, CA') but not the required coordinates for this type of search. So, I must ask for clarification.",
         },
     ],
     "count_occurrence_records": [
@@ -42,7 +62,7 @@ examples = {
             "clarification_reason": None,
         },
         {
-            "user_request": "For all Panthera onca records in the US, what's the breakdown by year?",
+            "user_request": "For all jaguar (Panthera onca) records in the US, what's the breakdown by year?",
             "search_parameters": {
                 "scientificName": "Panthera onca",
                 "country": "US",
@@ -66,7 +86,7 @@ examples = {
             "clarification_reason": "To ensure I search correctly, should I treat 'jaguar' as a common (vernacular) name or a scientific name?",
         },
         {
-            "user_request": "Find all endangered species of Panthera onca (scientific name)",
+            "user_request": "Find all endangered species of Panthera onca (jaguar)",
             "search_parameters": {
                 "q": "Panthera onca",
                 "threat": "ENDANGERED",
