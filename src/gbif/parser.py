@@ -57,7 +57,7 @@ def create_response_model(parameter_model: Type[BaseModel]) -> Type[BaseModel]:
 def get_example_messages(entrypoint_id: str) -> List[Dict[str, Any]]:
     # convert the fewshot examples to messages
     messages = []
-    for example, idx in enumerate(examples[entrypoint_id]):
+    for idx, example in enumerate(examples[entrypoint_id]):
         e = f"""
         Example {idx + 1}:
         User Request: {example["response"]["user_request"]}
