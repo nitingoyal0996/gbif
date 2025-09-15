@@ -57,22 +57,18 @@ def test_convert_to_api_params(url_builder):
 def test_url_building(url_builder):
     """Test URL building for different endpoints."""
     # Test search URL
-    search_params = GBIFOccurrenceSearchParams( # type: ignore
-        q="Quercus robur",
-        limit=5,
-        offset=10
+    search_params = GBIFOccurrenceSearchParams(  # type: ignore
+        scientificName=["Quercus robur"], limit=5, offset=10
     )
     search_url = url_builder.build_occurrence_search_url(search_params)
     assert search_url.startswith("https://api.gbif.org/v1/occurrence/search?")
-    assert "q=Quercus+robur" in search_url
+    assert "scientificName=Quercus+robur" in search_url
     assert "limit=5" in search_url
     assert "offset=10" in search_url
 
     # Test facets URL
-    facets_params = GBIFOccurrenceFacetsParams( # type: ignore
-        q="fox",
-        facet=["kingdom", "country"],
-        facetMincount=5
+    facets_params = GBIFOccurrenceFacetsParams(  # type: ignore
+        facet=["kingdom", "country"], facetMincount=5
     )
     facets_url = url_builder.build_occurrence_facets_url(facets_params)
     assert facets_url.startswith("https://api.gbif.org/v1/occurrence/search?")
@@ -86,8 +82,7 @@ def test_url_building(url_builder):
 
 def test_complex_search_params(url_builder):
     """Test complex search parameters with multiple filters."""
-    params = GBIFOccurrenceSearchParams( # type: ignore
-        q="mammal",
+    params = GBIFOccurrenceSearchParams(  # type: ignore
         scientificName=["Homo sapiens"],
         basisOfRecord=[BasisOfRecordEnum.HUMAN_OBSERVATION],
         continent=[ContinentEnum.EUROPE],
@@ -99,13 +94,12 @@ def test_complex_search_params(url_builder):
         occurrenceStatus=OccurrenceStatusEnum.PRESENT,
         license=[LicenseEnum.CC0_1_0],
         limit=20,
-        offset=40
+        offset=40,
     )
 
     api_params = url_builder._convert_to_api_params(params)
 
     # Verify key parameters are correctly converted
-    assert api_params["q"] == "mammal"
     assert api_params["scientificName"] == ["Homo sapiens"]
     assert api_params["basisOfRecord"] == ["HUMAN_OBSERVATION"]
     assert api_params["continent"] == ["EUROPE"]

@@ -34,8 +34,9 @@ async def test_count_occurrence_records(agent, context, messages):
 
     with patch('src.gbif.fetch.execute_request') as mock_execute:
         mock_execute.return_value = mock_response
-        await agent.run(context, "Count Puma concolor by country", "count_occurrence_records", None)
-
+        await agent.run(
+            context, "Count Puma concolor by country", "count_occurrence_records", None
+        )
     artifacts = [m for m in messages if isinstance(m, ArtifactResponse)]
     assert artifacts, "Expected at least one ArtifactResponse"
     # The agent first does species matching, so we need to check for that
@@ -72,8 +73,14 @@ async def test_find_species_records(agent, context, messages):
 
     with patch('src.gbif.fetch.execute_request') as mock_execute:
         mock_execute.return_value = mock_response
-        await agent.run(context, "Find Panthera leo", "find_species_records", None)
-
+        await agent.run(
+            context,
+            "Find lion (scientific name: Panthera leo)",
+            "find_species_records",
+            None,
+        )
+    print("MESSAGES:", messages)
+    print("TYPES:", [type(m) for m in messages])
     artifacts = [m for m in messages if isinstance(m, ArtifactResponse)]
     assert artifacts, "Expected at least one ArtifactResponse"
     assert artifacts[0].metadata["data_source"] == "GBIF Species"
@@ -108,7 +115,12 @@ async def test_find_species_taxonomic_information(agent, context, messages):
 
     with patch('src.gbif.fetch.execute_request') as mock_execute:
         mock_execute.return_value = mock_response
-        await agent.run(context, "Get taxonomy for Panthera leo", "species_taxonomic_information", None)
+        await agent.run(
+            context,
+            "Get taxonomy for Panthera leo",
+            "find_species_taxonomic_information",
+            None,
+        )
 
     artifacts = [m for m in messages if isinstance(m, ArtifactResponse)]
     assert artifacts, "Expected at least one ArtifactResponse"

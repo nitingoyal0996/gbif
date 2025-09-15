@@ -19,7 +19,7 @@ class InMemoryResponseChannel(ResponseChannel):
 TEST_CONTEXT_ID = "617727d1-4ce8-4902-884c-db786854b51c"
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def agent():
     return GBIFAgent()
 

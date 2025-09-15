@@ -53,7 +53,7 @@ async def test_routes_count_species_records_entrypoint(mock_run, agent, context)
 @patch("src.entrypoints.species.find_species_taxonomic_information.run")
 async def test_routes_find_species_taxonomic_information_entrypoint(mock_run, agent, context):
     mock_run.return_value = AsyncMock()
-    await agent.run(context, "test", "species_taxonomic_information", None)
+    await agent.run(context, "test", "find_species_taxonomic_information", None)
     mock_run.assert_called_once_with(context, "test")
 
 

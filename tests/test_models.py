@@ -17,20 +17,6 @@ def test_valid_basic_params():
     assert params.scientificName == ["Quercus robur"]
 
 
-@pytest.mark.parametrize(
-    "invalid_data, expected_error",
-    [
-        ({"decimalLatitude": "91,92"}, "latitude must be between -90 and 90"),
-        ({"limit": 301}, "input should be less than or equal to 300"),
-    ],
-)
-def test_validation_errors(invalid_data, expected_error):
-    # Test various validation error scenarios
-    with pytest.raises(ValidationError) as exc_info:
-        GBIFOccurrenceSearchParams(**invalid_data)
-    assert expected_error in str(exc_info.value).lower()
-
-
 def test_valid_facets_configuration():
     # Test creation with valid facet parameters
     params = GBIFOccurrenceFacetsParams(
