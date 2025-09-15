@@ -1,11 +1,9 @@
 import datetime
+import json
 import instructor
 
 from pydantic import BaseModel, Field, create_model
-from typing import Type, Optional, List, Dict, Any
-
-from src.resources.prompt_v2 import SYSTEM_PROMPT_V2
-from src.resources.fewshot import examples
+from typing import Type, Optional
 
 from dotenv import load_dotenv
 
@@ -54,19 +52,29 @@ def create_response_model(parameter_model: Type[BaseModel]) -> Type[BaseModel]:
     )
 
 
-def get_example_messages(entrypoint_id: str) -> List[Dict[str, Any]]:
-    # convert the fewshot examples to messages
-    messages = []
-    for idx, example in enumerate(examples[entrypoint_id]):
-        e = f"""
-        Example {idx + 1}:
-        User Request: {example["response"]["user_request"]}
-        Parsed Search Parameters: {example["response"]["search_parameters"] if example["response"]["search_parameters"] else "None"}
-        Reasoning: {example["reasoning"]}
-        \n\n
-        """
-        messages.append(e)
-    return messages
+def get_system_prompt(entrypoint_id: str):
+
+    examples = []
+
+    with open("src/resources/fewshot.json", "r") as f:
+        fewshot = json.load(f)
+        for idx, example in enumerate(fewshot[entrypoint_id]):
+            e = f"""
+            ### Example {idx + 1}:
+            ```json
+            {json.dumps(example, indent=2)}
+            ```
+            """
+            examples.append(e)
+
+    prompt = ""
+
+    with open("src/resources/sysprompt.md", "r") as f:
+        prompt += f.read()
+
+    prompt += "\n\n## Examples: \n\n" + "\n".join(examples)
+
+    return prompt
 
 
 async def parse(
@@ -81,19 +89,10 @@ async def parse(
         async_client=True,
     )
 
-    prompt = SYSTEM_PROMPT_V2.format(
-        CURRENT_DATE=CURRENT_DATE,
-    )
-
     messages = [
         {
             "role": "system",
-            "content": prompt,
-        },
-        {
-            "role": "user",
-            "content": "Few shot examples: + "
-            + "\n".join(get_example_messages(entrypoint_id)),
+            "content": get_system_prompt(entrypoint_id),
         },
         {
             "role": "user",
@@ -106,6 +105,6 @@ async def parse(
     response = await openai_client.chat.completions.create(
         messages=messages,
         response_model=response_model,
-        validation_context=instructor_validation_context,
+        context=instructor_validation_context,
     )
     return response
