@@ -1,4 +1,4 @@
-from pydantic import BaseModel, model_validator, ValidationInfo
+from pydantic import BaseModel, model_validator, ValidationInfo, field_validator
 from typing import ClassVar
 from src.models.entrypoints import (
     GBIFOccurrenceSearchParams,
@@ -25,6 +25,15 @@ class RequestValidationMixin(BaseModel):
 
         values = self.model_dump()
 
+        # Validate that all provided parameters are valid and present in the model
+        valid_fields = set(type(self).model_fields.keys())
+        for key in values.keys():
+            if key not in valid_fields:
+                raise ValueError(
+                    f"Invalid parameter '{key}' provided. "
+                    f"Allowed parameters are: {sorted(valid_fields)}"
+                )
+
         if not any(values.values()):
             raise ValueError("No values provided for any parameter")
 
@@ -43,6 +52,24 @@ class RequestValidationMixin(BaseModel):
                         "You must provide explicit values; they cannot be inferred or made up."
                     )
         return self
+
+
+class FacetValidationMixin:
+    @classmethod
+    def allowed_facet_fields(cls):
+        exclude = {"facet", "facetMincount", "facetMultiselect", "limit", "offset"}
+        return {f for f in cls.model_fields.keys() if f not in exclude}
+
+    @field_validator("facet")
+    @classmethod
+    def validate_facet_names(cls, v):
+        allowed = cls.allowed_facet_fields()
+        invalid = [f for f in v if f not in allowed]
+        if invalid:
+            raise ValueError(
+                f"Invalid facet(s): {invalid}. Allowed facets are: {sorted(allowed)}"
+            )
+        return v
 
 
 class OccurrenceSearchParamsValidator(
@@ -70,7 +97,7 @@ class OccurrenceSearchParamsValidator(
 
 
 class OccurrenceFacetsParamsValidator(
-    OccurrenceSearchParamsValidator, GBIFOccurrenceFacetsParams
+    OccurrenceSearchParamsValidator, GBIFOccurrenceFacetsParams, FacetValidationMixin
 ):
     pass
 
