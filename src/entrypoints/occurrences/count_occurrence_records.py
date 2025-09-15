@@ -45,7 +45,7 @@ async def run(context: ResponseContext, request: str):
         )
         response = await parse(request, entrypoint.id, OccurrenceFacetsParamsValidator)
         if response.clarification_needed:
-            await process.log("Stopping execution to clarify the request")
+            await process.log(f"Clarification needed: {response.clarification_reason}")
             await context.reply(f"{response.clarification_reason}")
             return
 
