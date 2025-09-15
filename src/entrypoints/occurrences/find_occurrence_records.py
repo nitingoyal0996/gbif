@@ -40,7 +40,7 @@ async def run(context: ResponseContext, request: str):
         AGENT_LOG_ID = f"FIND_OCCURRENCE_RECORDS_{str(uuid.uuid4())[:6]}"
         logger.info(f"Agent log ID: {AGENT_LOG_ID}")
         await process.log(
-            f"Request recieved: {request}. Generating iChatBio for GBIF request parameters..."
+            f"Request recieved: {request} \n\nGenerating iChatBio for GBIF request parameters..."
         )
 
         response = await parse(request, entrypoint.id, OccurrenceSearchParamsValidator)

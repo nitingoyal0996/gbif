@@ -41,7 +41,7 @@ async def run(context: ResponseContext, request: str):
     async with context.begin_process("Requesting GBIF statistics") as process:
         AGENT_LOG_ID = f"COUNT_OCCURRENCE_RECORDS_{str(uuid.uuid4())[:6]}"
         await process.log(
-            f"Request recieved: {request}. Generating iChatBio for GBIF request parameters..."
+            f"Request recieved: {request} \n\nGenerating iChatBio for GBIF request parameters..."
         )
         response = await parse(request, entrypoint.id, OccurrenceFacetsParamsValidator)
         if response.clarification_needed:
