@@ -6,6 +6,8 @@ from src.models.entrypoints import (
     GBIFSpeciesSearchParams,
     GBIFSpeciesTaxonomicParams,
     GBIFDatasetSearchParams,
+    GBIFOccurrenceFacetsParams,
+    GBIFSpeciesFacetsParams,
 )
 
 
@@ -67,7 +69,9 @@ class OccurrenceSearchParamsValidator(
     }
 
 
-class OccurrenceFacetsParamsValidator(OccurrenceSearchParamsValidator):
+class OccurrenceFacetsParamsValidator(
+    OccurrenceSearchParamsValidator, GBIFOccurrenceFacetsParams
+):
     pass
 
 
@@ -85,7 +89,9 @@ class SpeciesSearchParamsValidator(RequestValidationMixin, GBIFSpeciesSearchPara
     }
 
 
-class SpeciesFacetsParamsValidator(SpeciesSearchParamsValidator):
+class SpeciesFacetsParamsValidator(
+    SpeciesSearchParamsValidator, GBIFSpeciesFacetsParams
+):
     pass
 
 

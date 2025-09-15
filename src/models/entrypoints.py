@@ -83,6 +83,12 @@ class GBIFOccurrenceBaseParams(ProductionBaseModel):
         examples=[["K001275042"], ["12345", "67890"]],
     )
 
+    q: Optional[str] = Field(
+        None,
+        description="Simple full-text search parameter. The value for this parameter can be a simple word or a phrase. Wildcards are not supported",
+        examples=["mammal", "Quercus robur"],
+    )
+
     # DWCA extension parameters
     dwcaExtension: Optional[List[str]] = Field(
         None,

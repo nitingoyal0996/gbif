@@ -138,7 +138,7 @@ def _generate_response_summary(page_info: dict, portal_url: str) -> str:
 
 
 async def _update_search_params(
-    params: OccurrenceFacetsParamsValidator,
+    params: GBIFOccurrenceFacetsParams,
     taxon_keys: list,
     process: IChatBioAgentProcess,
 ) -> GBIFOccurrenceFacetsParams:

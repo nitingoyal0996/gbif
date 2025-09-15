@@ -219,4 +219,24 @@ examples = {
             "reasoning": "The 'type' parameter accepts only one value, so datasets cannot be both OCCURRENCE and another type simultaneously. This represents a logical constraint violation requiring clarification.",
         },
     ],
+    "count_species_records": [
+        {
+            "response": {
+                "user_request": "Count species by kingdom",
+                "search_parameters": {"facet": ["kingdom"]},
+                "clarification_needed": False,
+                "clarification_reason": None,
+            },
+            "reasoning": "The user wants a count of species grouped by kingdom, which maps to a facet search on the 'kingdom' field.",
+        },
+        {
+            "response": {
+                "user_request": "How many endangered species are there?",
+                "search_parameters": {"threat": "ENDANGERED"},
+                "clarification_needed": False,
+                "clarification_reason": None,
+            },
+            "reasoning": "The user wants a count of species with threat status 'ENDANGERED'. This maps directly to the 'threat' parameter.",
+        },
+    ],
 }
