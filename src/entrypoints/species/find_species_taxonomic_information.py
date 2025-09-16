@@ -4,7 +4,11 @@ from ichatbio.types import AgentEntrypoint
 from src.gbif.api import GbifApi
 from src.gbif.fetch import execute_request, execute_multiple_requests
 from src.models.entrypoints import GBIFSpeciesSearchParams, GBIFSpeciesTaxonomicParams
-from src.models.enums.species_parameters import TaxonomicStatusEnum, TaxonomicRankEnum
+from src.models.enums.species_parameters import (
+    TaxonomicStatusEnum,
+    TaxonomicRankEnum,
+    QueryFieldEnum,
+)
 from src.models.responses.species import NameUsage, PagingResponseNameUsage
 from src.log import with_logging, logger
 from src.gbif.parser import parse
@@ -19,15 +23,13 @@ load_dotenv()
 
 
 description = """
-**Use Case:** Use this entrypoint to retrieve deep, taxonomic information (like the full parent hierarchy, child taxa, or synonyms) for a species that you have scientificName or taxonKey for.
+**Use Case:** Use this entrypoint to retrieve taxonomic information (like the full parent hierarchy, child taxa, or synonyms) that matches with a scientificName or taxonKey for a species.
 
-**Triggers On:** User requests to "get details for," "show the hierarchy for," "list synonyms of," or "find children/parent of" a species, when a specific taxonKey (usage key) or scientificName is provided.
+**Triggers On:** User requests may ask to [find | get | show] ["taxonomic information of" | "synonyms of" | "children of" | "parents of"] a species.
 
-**Key Inputs:** A specific integer key (the species taxonKey).
+**Key Inputs:** Requires the species taxonKey or a scientificName. It also accepts a rank and a qField to narrow down the search results if the user provides a name; Make sure to include the fields in the request.
 
-**Key Outputs:** A detailed taxonomic profile for one species.
-
-**Crucial Distinction:** The user must provide a taxonKey or a scientific name.
+**Limitations:** If a name is provided, it will try to first search for the species usageKey in the GBIF Backbone Taxonomy and then retrieve the taxonomic information.
 """
 
 
@@ -41,6 +43,8 @@ entrypoint = AgentEntrypoint(
         "Retrieve taxonomic data for species id 2877951 including children taxa",
     ],
 )
+
+GBIF_BACKBONE_DATASET_KEY = "d7dddbf4-2cf0-4f39-9b2a-bb099caae36c"
 
 
 @with_logging("find_species_taxonomic_information")
@@ -80,7 +84,7 @@ async def run(context: ResponseContext, request: str):
                 f"No species id found, searching for species by name: {params.name}"
             )
             species_key = await __search_species_by_name(
-                api, request, params.name, process
+                api, request, params.name, params.rank, params.qField, process
             )
             params = params.model_copy(update={"key": species_key})
 
@@ -267,15 +271,26 @@ async def __search_species_by_name(
     api: GbifApi,
     user_query: str,
     name: str,
+    rank: Optional[TaxonomicRankEnum],
+    qField: Optional[QueryFieldEnum],
     process: IChatBioAgentProcess,
 ) -> int:
     await process.log(f"Searching for species by name: {name}")
 
-    url = api.build_species_search_url(
-        GBIFSpeciesSearchParams(
-            q=name, status=TaxonomicStatusEnum.ACCEPTED, rank=TaxonomicRankEnum.SPECIES
-        )
+    # search for species using the GBIF Backbone Dataset Key
+    params = GBIFSpeciesSearchParams(
+        q=name,
+        status=TaxonomicStatusEnum.ACCEPTED,
+        datasetKey=GBIF_BACKBONE_DATASET_KEY,
     )
+    if rank:
+        params.rank = rank
+    if qField:
+        params.qField = qField
+
+    url = api.build_species_search_url(params)
+
+    await process.log(f"Searching for species in the GBIF Backbone Taxonomy: {url}")
 
     try:
         raw_response = await execute_request(url)

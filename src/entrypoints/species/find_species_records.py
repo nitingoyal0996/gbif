@@ -11,15 +11,17 @@ from src.gbif.parser import parse
 
 
 description = """
-**Use Case:** Use this entrypoint to find species using a general search term (like a common or scientific name) and discover their unique taxonomic keys (taxonKey). This is the primary tool for starting a taxonomic investigation.
+**Use Case:** Use this entrypoint to find species using a general search term (like a common or scientific name).
 
-**Triggers On:** User requests to "search for a species," "look up," or "find the taxon key for" a specific organism. It's the correct first step when the user has a name but not a specific GBIF ID.
+**Triggers On:** User requests to "search for a species," "look up," a specific organism.
 
 **Key Inputs:** A general query string (q). This can be made more precise by using qField to target either a SCIENTIFIC_NAME or a VERNACULAR_NAME (common name). Also accepts optional filters like rank or threat status.
 
 **Key Outputs:** A list of potential matching species, each with its essential usageKey (the taxonKey).
 
 **Crucial Distinction:** This tool finds potential matches from a name; it does not retrieve detailed hierarchies or count occurrences.
+
+To search for species in the GBIF Backbone Taxonomy, use the datasetKey parameter with the value "d7dddbf4-2cf0-4f39-9b2a-bb099caae36c".
 """
 
 entrypoint = AgentEntrypoint(

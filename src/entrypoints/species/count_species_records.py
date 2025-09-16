@@ -19,6 +19,8 @@ description = """
 **Key Outputs:** Aggregated counts of species, not individual species data or their occurrences.
 
 **Crucial Distinction:** This is for counting taxonomic entities (e.g., "how many species of birds are endangered?"), not their real-world observations.
+
+To count species in the GBIF Backbone Taxonomy, use the datasetKey parameter with the value "d7dddbf4-2cf0-4f39-9b2a-bb099caae36c".
 """
 
 entrypoint = AgentEntrypoint(

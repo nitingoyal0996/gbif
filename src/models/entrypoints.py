@@ -959,6 +959,23 @@ class GBIFSpeciesTaxonomicParams(ProductionBaseModel):
         examples=["Panthera onca", "jaguar", "Quercus robur", "oak tree"],
     )
 
+    rank: Optional[TaxonomicRankEnum] = Field(
+        None,
+        description="The taxonomic rank of the species. This is an optional parameter that can be used to filter the results by taxonomic rank.",
+        examples=[
+            TaxonomicRankEnum.SPECIES,
+            TaxonomicRankEnum.GENUS,
+            TaxonomicRankEnum.FAMILY,
+            TaxonomicRankEnum.ORDER,
+        ],
+    )
+
+    qField: Optional[QueryFieldEnum] = Field(
+        None,
+        description="The field to search in. This is an optional parameter that can be used to search in the scientificName or vernacularName field.",
+        examples=[QueryFieldEnum.SCIENTIFIC_NAME, QueryFieldEnum.VERNACULAR_NAME],
+    )
+
     # Optional parameters for controlling data retrieval
     includeSynonyms: Optional[bool] = Field(
         True,
