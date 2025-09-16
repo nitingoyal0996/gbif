@@ -276,17 +276,14 @@ async def __search_species_by_name(
     process: IChatBioAgentProcess,
 ) -> int:
     await process.log(f"Searching for species by name: {name}")
-
-    # search for species using the GBIF Backbone Dataset Key
+    # Create the search params for species using the GBIF Backbone Dataset Key at once
     params = GBIFSpeciesSearchParams(
         q=name,
         status=TaxonomicStatusEnum.ACCEPTED,
         datasetKey=GBIF_BACKBONE_DATASET_KEY,
+        rank=rank,
+        qField=qField,
     )
-    if rank:
-        params.rank = rank
-    if qField:
-        params.qField = qField
 
     url = api.build_species_search_url(params)
 
