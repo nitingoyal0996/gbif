@@ -46,7 +46,7 @@ async def run(context: ResponseContext, request: str):
             await context.reply(f"{response.clarification_reason}")
             return
 
-        params = response.search_parameters
+        params = response.params
         description = response.artifact_description
 
         await process.log(

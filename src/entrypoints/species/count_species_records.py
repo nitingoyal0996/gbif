@@ -20,7 +20,7 @@ description = """
 
 **Crucial Distinction:** This is for counting taxonomic entities (e.g., "how many species of birds are endangered?"), not their real-world observations.
 
-To count species in the GBIF Backbone Taxonomy, use the datasetKey parameter with the value "d7dddbf4-2cf0-4f39-9b2a-bb099caae36c".
+Limitations: This entrypoint does not support searching species with location information. Occurrence API should be used instead.
 """
 
 entrypoint = AgentEntrypoint(
@@ -48,7 +48,7 @@ async def run(context: ResponseContext, request: str):
             await context.reply(f"{response.clarification_reason}")
             return
         logger.info(f"LLM Parsed Response: {response}")
-        params = response.search_parameters
+        params = response.params
         description = response.artifact_description
 
         await process.log(

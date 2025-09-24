@@ -22,19 +22,19 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-description = """
-**Use Case:** Use this entrypoint to retrieve taxonomic information (like the full parent hierarchy, child taxa, or synonyms) that matches with a scientificName or taxonKey for a species.
+description = f"""
+**Use Case:** Use this entrypoint to retrieve taxonomic information (like the full parent hierarchy, child taxa, or synonyms) that matches with a scientificName or taxonKey. It can also be used to find specific identifiers such as taxonKey, kingdomKey, etc in GBIF Backbone Taxonomy.
 
-**Triggers On:** User requests may ask to [find | get | show] ["taxonomic information of" | "synonyms of" | "children of" | "parents of"] a species.
+**Triggers On:** User requests may ask to find, get, or show the "taxonomic information of", "synonyms of", "children of", "parents of", "kingdomKey/taxonKey/classKey...etc" for a species.
 
 **Key Inputs:** Requires the species taxonKey or a scientificName. It also accepts a rank and a qField to narrow down the search results if the user provides a name; Make sure to include the fields in the request.
 
-**Limitations:** If a name is provided, it will try to first search for the species usageKey in the GBIF Backbone Taxonomy and then retrieve the taxonomic information.
+If only name is provided, it will try to first search for the species usageKey in the GBIF Backbone Taxonomy and then retrieve the taxonomic information. If a taxonKey is provided, it will directly retrieve the taxonomic information.
 """
 
 
 entrypoint = AgentEntrypoint(
-    id="find_species_taxonomic_information",
+    id="find_taxonomic_information",
     name="Species Taxonomic Information",
     description=description,
     examples=[
@@ -47,7 +47,7 @@ entrypoint = AgentEntrypoint(
 GBIF_BACKBONE_DATASET_KEY = "d7dddbf4-2cf0-4f39-9b2a-bb099caae36c"
 
 
-@with_logging("find_species_taxonomic_information")
+@with_logging("find_taxonomic_information")
 async def run(context: ResponseContext, request: str):
     """
     Executes the species taxonomic information entrypoint. Retrieves comprehensive taxonomic
@@ -65,7 +65,7 @@ async def run(context: ResponseContext, request: str):
             await context.reply(f"{response.clarification_reason}")
             return
 
-        params = response.search_parameters
+        params = response.params
         api = GbifApi()
 
         await process.log(

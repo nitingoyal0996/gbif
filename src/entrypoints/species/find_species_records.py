@@ -21,7 +21,7 @@ description = """
 
 **Crucial Distinction:** This tool finds potential matches from a name; it does not retrieve detailed hierarchies or count occurrences.
 
-To search for species in the GBIF Backbone Taxonomy, use the datasetKey parameter with the value "d7dddbf4-2cf0-4f39-9b2a-bb099caae36c".
+Limitations: It cannot do searches for specific identifiers such as taxonKey, kingdomKey, etc Use taxonomic information entrypoint for that.
 """
 
 entrypoint = AgentEntrypoint(
@@ -50,7 +50,7 @@ async def run(context: ResponseContext, request: str):
             await context.reply(f"{response.clarification_reason}")
             return
         logger.info(f"LLM Parsed Response: {response}")
-        params = response.search_parameters
+        params = response.params
         description = response.artifact_description
 
         await process.log(

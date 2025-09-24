@@ -11,7 +11,7 @@ from src.entrypoints import (
     count_occurrence_records,
     find_species_records,
     count_species_records,
-    find_species_taxonomic_information,
+    find_taxonomic_information,
     find_occurrence_by_id,
     find_datasets,
 )
@@ -30,7 +30,7 @@ class GBIFAgent(IChatBioAgent):
                 count_occurrence_records.entrypoint,
                 find_species_records.entrypoint,
                 count_species_records.entrypoint,
-                find_species_taxonomic_information.entrypoint,
+                find_taxonomic_information.entrypoint,
                 find_occurrence_by_id.entrypoint,
                 find_datasets.entrypoint,
             ],
@@ -57,8 +57,8 @@ class GBIFAgent(IChatBioAgent):
                     await find_species_records.run(context, request)
                 case count_species_records.entrypoint.id:
                     await count_species_records.run(context, request)
-                case find_species_taxonomic_information.entrypoint.id:
-                    await find_species_taxonomic_information.run(context, request)
+                case find_taxonomic_information.entrypoint.id:
+                    await find_taxonomic_information.run(context, request)
                 case find_occurrence_by_id.entrypoint.id:
                     await find_occurrence_by_id.run(context, request)
                 case find_datasets.entrypoint.id:
