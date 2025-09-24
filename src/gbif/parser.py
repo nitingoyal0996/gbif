@@ -3,6 +3,8 @@ import json
 import instructor
 
 from pydantic import BaseModel, Field, create_model
+from instructor.exceptions import InstructorRetryException
+from tenacity import retry, stop_after_attempt, wait_exponential
 from typing import Type, Optional
 
 from dotenv import load_dotenv
@@ -16,10 +18,17 @@ CURRENT_DATE = datetime.datetime.now().strftime("%B %d, %Y")
 def create_response_model(parameter_model: Type[BaseModel]) -> Type[BaseModel]:
     return create_model(
         "LLMResponse",
-        search_parameters=(
+        params=(
             Optional[parameter_model],
             Field(
-                description="The search parameters for the API",
+                description="API parameters values supplied from provided in the user request",
+                default=None,
+            ),
+        ),
+        unresolved_params=(
+            Optional[list[str]],
+            Field(
+                description="The fields that need clarification to continue with the request.",
                 default=None,
             ),
         ),
@@ -53,9 +62,11 @@ def create_response_model(parameter_model: Type[BaseModel]) -> Type[BaseModel]:
 
 
 def get_system_prompt(entrypoint_id: str):
+    prompt = ""
+    with open("src/resources/sysprompt.md", "r") as f:
+        prompt += f.read()
 
     examples = []
-
     with open("src/resources/fewshot.json", "r") as f:
         fewshot = json.load(f)
         for idx, example in enumerate(fewshot[entrypoint_id]):
@@ -67,16 +78,14 @@ def get_system_prompt(entrypoint_id: str):
             """
             examples.append(e)
 
-    prompt = ""
-
-    with open("src/resources/sysprompt.md", "r") as f:
-        prompt += f.read()
-
-    prompt += "\n\n## Examples: \n\n" + "\n".join(examples)
+    if examples:
+        prompt += "\n\n## Examples: \n\n" + "\n".join(examples)
 
     return prompt
 
 
+# For validation errors - shorter delays
+@retry(wait=wait_exponential(multiplier=1, min=1, max=10), stop=stop_after_attempt(3))
 async def parse(
     request: str,
     entrypoint_id: str,
@@ -84,7 +93,7 @@ async def parse(
 ) -> Type[BaseModel]:
     response_model = create_response_model(parameters_model)
 
-    openai_client = instructor.from_provider(
+    client = instructor.from_provider(
         "openai/gpt-4.1",
         async_client=True,
     )
@@ -102,9 +111,17 @@ async def parse(
 
     instructor_validation_context = {"user_request": request}
 
-    response = await openai_client.chat.completions.create(
-        messages=messages,
-        response_model=response_model,
-        context=instructor_validation_context,
-    )
+    try:
+        response = await client.chat.completions.create(
+            messages=messages,
+            response_model=response_model,
+            context=instructor_validation_context,
+            max_retries=3,
+        )
+    except InstructorRetryException as e:
+        # Access failed attempts for debugging
+        print(f"Failed after {e.n_attempts} attempts")
+        for attempt in e.failed_attempts:
+            print(f"Attempt {attempt.attempt_number}: {attempt.exception}")
+
     return response

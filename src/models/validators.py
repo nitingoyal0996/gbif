@@ -10,9 +10,11 @@ from src.models.entrypoints import (
     GBIFSpeciesFacetsParams,
 )
 
-
 class RequestValidationMixin(BaseModel):
-    """Generic mixin to ensure model values appear in the original user request."""
+    """
+    Generic mixin to ensure model values appear in the original user request.
+    Validates params against the original user request.
+    """
 
     # Override this in subclasses
     VALIDATION_FIELDS: ClassVar[dict[str, str]] = {}
@@ -57,23 +59,36 @@ class RequestValidationMixin(BaseModel):
 class FacetValidationMixin:
     @classmethod
     def allowed_facet_fields(cls):
-        exclude = {"facet", "facetMincount", "facetMultiselect", "limit", "offset"}
+        exclude = {
+            "facet",
+            "facetMincount",
+            "facetMultiselect",
+            "limit",
+            "offset",
+        }
         return {f for f in cls.model_fields.keys() if f not in exclude}
 
-    @field_validator("facet")
+    @field_validator("facet", check_fields=False)
     @classmethod
     def validate_facet_names(cls, v):
         allowed = cls.allowed_facet_fields()
         invalid = [f for f in v if f not in allowed]
+
+        if "scientificName" in v:
+            raise ValueError(
+                f"Fields are not valid facets: ['scientificName']. You should remove this field from facet parameter values and use a different field if available."
+            )
+
         if invalid:
             raise ValueError(
-                f"Invalid facet(s): {invalid}. Allowed facets are: {sorted(allowed)}"
+                f"The value(s) {invalid} for field 'facet' are not valid facets."
             )
         return v
 
 
 class OccurrenceSearchParamsValidator(
-    RequestValidationMixin, GBIFOccurrenceSearchParams
+    RequestValidationMixin,
+    GBIFOccurrenceSearchParams,
 ):
     VALIDATION_FIELDS: ClassVar[dict[str, str]] = {
         "decimalLatitude": "latitude/longitude",
@@ -97,7 +112,9 @@ class OccurrenceSearchParamsValidator(
 
 
 class OccurrenceFacetsParamsValidator(
-    OccurrenceSearchParamsValidator, GBIFOccurrenceFacetsParams, FacetValidationMixin
+    OccurrenceSearchParamsValidator,
+    FacetValidationMixin,
+    GBIFOccurrenceFacetsParams,
 ):
     pass
 

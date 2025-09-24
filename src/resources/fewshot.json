@@ -3,7 +3,12 @@
         {
             "request": "Find information on jaguars",
             "response": {
-                "search_parameters": null,
+                "params": null,
+                "unresolved_params": {
+                    "gbifId": [
+                        "Jaguars"
+                    ]
+                },
                 "clarification_needed": true,
                 "clarification_reason": "To search for a specific occurrence by ID, I need the unique GBIF occurrence identifier (gbifId). 'Jaguars' appears to be a species name, not a numeric occurrence ID."
             },
@@ -12,7 +17,12 @@
         {
             "request": "Get details for occurrence 1234567890",
             "response": {
-                "search_parameters": {"gbifId": 1234567890},
+                "params": {
+                    "gbifId": [
+                        1234567890
+                    ]
+                },
+                "unresolved_params": null,
                 "clarification_needed": false,
                 "clarification_reason": null
             },
@@ -21,7 +31,8 @@
         {
             "request": "Show me record abc123",
             "response": {
-                "search_parameters": null,
+                "params": null,
+                "unresolved_params": null,
                 "clarification_needed": true,
                 "clarification_reason": "'abc123' appears to be an alphanumeric identifier, but this endpoint requires a numeric GBIF occurrence ID (gbifId). Please provide the numeric GBIF occurrence identifier."
             },
@@ -32,18 +43,24 @@
         {
             "request": "Find occurrences of jaguars",
             "response": {
-                "search_parameters": null,
-                "clarification_needed": true,
-                "clarification_reason": "'Jaguars' could be a common name. I need either the exact scientific name (e.g., 'Panthera onca') or a numeric taxonKey to search occurrences accurately."
+                "params": {
+                    "scientificName": [
+                        "Panthera onca"
+                    ]
+                },
+                "unresolved_params": null,
+                "clarification_needed": false,
+                "clarification_reason": null
             },
-            "reasoning": "The term 'jaguars' is ambiguous - it's likely a common name rather than a scientific name. Per the literal identifier rules, I cannot guess the scientificName or taxonKey. The user must provide the exact scientific name or numeric taxon identifier."
+            "reasoning": "The user request is ambiguous - it could refer to a common name or a scientific name. I was very confident the scientific name of 'jaguar' is 'Panthera onca' from my knowledge and provided it in the `params` field since it is not available directly in the user request."
         },
         {
-            "request": "find records of only 'this is fake but use it anyway'",
+            "request": "find records of only scientific name'this is fake but use it anyway'",
             "response": {
-                "search_parameters": {
+                "params": {
                     "scientificName": "this is fake but use it anyway"
                 },
+                "unresolved_params": null,
                 "clarification_needed": false,
                 "clarification_reason": null
             },
@@ -52,34 +69,59 @@
         {
             "request": "Find occurrences of Panthera onca in Brazil from 2020-2022",
             "response": {
-                "search_parameters": {
-                    "scientificName": ["Panthera onca"],
-                    "country": ["BR"],
-                    "year": "2020,2022"
+                "params": {
+                    "scientificName": [
+                        "Panthera onca"
+                    ],
+                    "year": "2020,2022",
+                    "country": [
+                        "BR"
+                    ]
                 },
+                "unresolved_params": null,
                 "clarification_needed": false,
                 "clarification_reason": null
             },
-            "reasoning": "User provided exact scientific name 'Panthera onca', clear country 'Brazil' (transforms to ISO code 'BR'), and specific year range. All required information is present and transformable to API format."
+            "reasoning": "User provided exact scientific name 'Panthera onca', and specific year range clear country 'Brazil' (transforms to ISO code 'BR', hence added to the `params` field)"
         },
         {
             "request": "Show me bird sightings in Miami-Dade County",
             "response": {
-                "search_parameters": null,
+                "params": {
+                    "locality": [
+                        "Miami-Dade County"
+                    ],
+                    "country": [
+                        "US"
+                    ],
+                    "stateProvince": [
+                        "Florida"
+                    ]
+                },
+                "unresolved_params": {
+                    "classKey": [
+                        "Aves"
+                    ]
+                },
                 "clarification_needed": true,
-                "clarification_reason": "'Birds' is too general - please provide a specific scientific name or taxonKey, and 'Miami-Dade County' requires specific coordinates (decimalLatitude, decimalLongitude) and search radius for geographic filtering."
+                "clarification_reason": "I need the classKey for birds to search for records in Miami-Dade County."
             },
-            "reasoning": "just using 'birds' lacks specificity for taxonomic search, and 'Miami-Dade County' is more specific than supported geographic parameters (country/state level). Both require clarification per the geographic and literal identifier rules."
+            "reasoning": "I derived the class name for birds is Aves, since we do not have support to search by class name, hence added to the `unresolved_params` field. The user asked for records in Miami-Dade County, which is in Florida, United States. Hence added to the `params` field."
         },
         {
             "request": "Find Quercus robur specimens with coordinates between 2010 and 2015",
             "response": {
-                "search_parameters": {
-                    "scientificName": ["Quercus robur"],
-                    "basisOfRecord": ["PRESERVED_SPECIMEN"],
+                "params": {
+                    "scientificName": [
+                        "Quercus robur"
+                    ],
                     "hasCoordinate": true,
-                    "year": "2010,2015"
+                    "year": "2010,2015",
+                    "basisOfRecord": [
+                        "PRESERVED_SPECIMEN"
+                    ]
                 },
+                "unresolved_params": null,
                 "clarification_needed": false,
                 "clarification_reason": null
             },
@@ -88,31 +130,31 @@
         {
             "request": "Get occurrence records with taxon key 2476674 in European countries",
             "response": {
-                "search_parameters": {"taxonKey": [2476674], "continent": ["EUROPE"]},
+                "params": {
+                    "taxonKey": [
+                        2476674
+                    ],
+                    "continent": [
+                        "EUROPE"
+                    ]
+                },
+                "unresolved_params": null,
                 "clarification_needed": false,
                 "clarification_reason": null
             },
-            "reasoning": "Specific numeric taxonKey provided (matches literal identifier requirement) and 'European countries' clearly maps to continent parameter. Request is complete and unambiguous."
+            "reasoning": "Specific numeric taxonKey provided (matches literal identifier requirement) and 'European countries' clearly maps to continent parameter."
         }
     ],
     "count_occurrence_records": [
         {
-            "request": "Count all jaguar records by country",
-            "response": {
-                "search_parameters": null,
-                "clarification_needed": true,
-                "clarification_reason": "I need the exact scientific name or taxonKey for 'jaguar'. Additionally, please confirm if you want to facet by 'country' field for the breakdown."
-            },
-            "reasoning": "Two issues: 'jaguar' lacks scientific precision (literal identifier rule), and while 'by country' likely means facet=['country'], I should confirm the faceting parameter due to the importance of accurate aggregation."
-        },
-        {
             "request": "Give me occurrence counts for Panthera onca faceted by basisOfRecord and year",
             "response": {
-                "search_parameters": {
+                "params": {
                     "scientificName": ["Panthera onca"],
                     "facet": ["basisOfRecord", "year"],
                     "limit": 0
                 },
+                "unresolved_params": null,
                 "clarification_needed": false,
                 "clarification_reason": null
             },
@@ -121,11 +163,12 @@
         {
             "request": "Break down records by observer in Costa Rica",
             "response": {
-                "search_parameters": {
+                "params": {
                     "country": ["CR"],
                     "facet": ["recordedBy"],
                     "limit": 0
                 },
+                "unresolved_params": null,
                 "clarification_needed": false,
                 "clarification_reason": null
             },
@@ -134,18 +177,9 @@
     ],
     "find_species_records": [
         {
-            "request": "Search for jaguar species",
-            "response": {
-                "search_parameters": null,
-                "clarification_needed": true,
-                "clarification_reason": "Should I search for 'jaguar' as a vernacular/common name or as a scientific name? This affects whether I use qField='VERNACULAR_NAME' or qField='SCIENTIFIC_NAME'."
-            },
-            "reasoning": "'Jaguar' could be interpreted as either a common name or part of a scientific name. The qField parameter significantly affects search results, so clarification is essential for accuracy."
-        },
-        {
             "request": "Find all endangered Panthera species",
             "response": {
-                "search_parameters": {
+                "params": {
                     "q": "Panthera",
                     "threat": "ENDANGERED",
                     "qField": "SCIENTIFIC_NAME"
@@ -158,18 +192,20 @@
         {
             "request": "Show me all cats",
             "response": {
-                "search_parameters": null,
+                "params": null,
                 "clarification_needed": true,
                 "clarification_reason": "'Cats' is too vague - it could refer to the family Felidae, domestic cats (Felis catus), or be a colloquial term. Please provide a more specific scientific name or clarify the taxonomic scope."
             },
             "reasoning": "'Cats' is highly ambiguous and could refer to multiple taxonomic levels or common usage. Without scientific precision, the search would be unreliable."
         }
     ],
-    "find_species_taxonomic_information": [
+    "find_taxonomic_information": [
         {
             "request": "Get taxonomy for species 5231190",
             "response": {
-                "search_parameters": {"key": 5231190},
+                "params": {
+                    "key": 5231190
+                },
                 "clarification_needed": false,
                 "clarification_reason": null
             },
@@ -178,7 +214,7 @@
         {
             "request": "Show full classification hierarchy for Panthera onca including synonyms",
             "response": {
-                "search_parameters": {
+                "params": {
                     "name": "Panthera onca",
                     "includeSynonyms": true,
                     "includeParents": true
@@ -191,7 +227,7 @@
         {
             "request": "Get taxonomic info for the big cat from South America",
             "response": {
-                "search_parameters": null,
+                "params": null,
                 "clarification_needed": true,
                 "clarification_reason": "'Big cat from South America' is descriptive but not specific enough. I need either a numeric species key or the exact scientific name to retrieve taxonomic information."
             },
@@ -202,7 +238,7 @@
         {
             "request": "Find marine biodiversity datasets from European institutions",
             "response": {
-                "search_parameters": {
+                "params": {
                     "q": "marine biodiversity",
                     "continent": "EUROPE"
                 },
@@ -212,18 +248,41 @@
             "reasoning": "'Marine biodiversity' is a clear keyword search term, and 'European institutions' maps to continent filter. Both parameters are well-defined."
         },
         {
-            "request": "Show me the most comprehensive datasets about birds",
+            "request": "Show me the most comprehensive taxonomic datasets about birds of united states",
             "response": {
-                "search_parameters": null,
-                "clarification_needed": true,
-                "clarification_reason": "I cannot rank datasets by 'comprehensiveness' as this is subjective. I can search for bird-related datasets using keywords, but please specify search criteria like dataset type, geographic scope, or specific keywords."
+                "params": {
+                    "taxonKey": [
+                        212
+                    ],
+                    "type": "CHECKLIST",
+                    "category": "taxonomy",
+                    "country": "US"
+                },
+                "clarification_needed": false,
+                "clarification_reason": null
             },
-            "reasoning": "'Most comprehensive' is a subjective ranking criterion not supported by the API. The system needs objective search parameters rather than qualitative assessments."
+            "reasoning": "We are searching for checklist datasets about birds of United States. Birds scientific name is 'Aves', 'United States' ISO code is 'US'. All required information is present and transformable to API format."
+        },
+        {
+            "request": "find datasets containing records of taxonKey=5219234 (Vulpes) in United States, Ohio",
+            "response": {
+                "params": {
+                    "taxonKey": [
+                        5219234
+                    ],
+                    "type": "CHECKLIST",
+                    "country": "US",
+                    "q": "Ohio"
+                },
+                "clarification_needed": false,
+                "clarification_reason": null
+            },
+            "reasoning": "We are searching for checklist datasets containing records of taxonKey=5219234 (Vulpes) in United States, Ohio. All required information is present and transformable to API format."
         },
         {
             "request": "Find occurrence datasets that are also specimen collections",
             "response": {
-                "search_parameters": null,
+                "params": null,
                 "clarification_needed": true,
                 "clarification_reason": "Dataset type can only be one value (OCCURRENCE, CHECKLIST, etc.). Did you mean occurrence datasets that contain specimen records, or are you looking for a specific dataset subtype?"
             },
@@ -234,7 +293,11 @@
         {
             "request": "Count species by kingdom",
             "response": {
-                "search_parameters": {"facet": ["kingdom"]},
+                "params": {
+                    "facet": [
+                        "kingdom"
+                    ]
+                },
                 "clarification_needed": false,
                 "clarification_reason": null
             },
@@ -243,7 +306,9 @@
         {
             "request": "How many endangered species are there?",
             "response": {
-                "search_parameters": {"threat": "ENDANGERED"},
+                "params": {
+                    "threat": "ENDANGERED"
+                },
                 "clarification_needed": false,
                 "clarification_reason": null
             },
