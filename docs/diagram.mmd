@@ -1,0 +1,41 @@
+sequenceDiagram
+    participant User as User
+    participant Agent as GBIF Agent
+    participant Parser as Request Parser
+    participant OpenAI as OpenAI API
+    participant Resolver as Parameter Resolver
+    participant SpeciesAPI as GBIF Species Match API
+    participant OccurrenceAPI as GBIF Occurrence API
+
+    Note over User,OccurrenceAPI: High Level GBIF Agent Data Query
+
+    User->>+Agent: Natural language biodiversity query
+    Agent->>+Parser: Parse user request
+    Parser->>+OpenAI: Process with LLM
+    OpenAI->>-Parser: Structured response with clarification fields
+    Parser->>-Agent: Validated parameters
+
+    Note over Agent,Resolver: Try: Parameter Resolution (kingdomKey, speciesKey... etc.)
+    Agent->>+Resolver: Resolve pending search parameters
+    Resolver->>OpenAI: Extract taxonomic names from request
+    Resolver->>+SpeciesAPI: Resolve names to keys via species match
+    SpeciesAPI->>-Resolver: Taxonomic keys or match results
+    Resolver->>-Agent: Resolved parameters or remaining unresolved
+    
+    alt 
+        Agent->>User: Clarification message (LLM generated)
+        Note over Agent,User: Process pauses awaiting user clarification
+    end
+
+    Note over Agent,SpeciesAPI: Scientific Names to taxonKey Conversion
+    Agent->>+SpeciesAPI: GET /species/match?scientificName={name}
+    SpeciesAPI->>-Agent: Response (taxonKey)
+    Agent->>Agent: Update search parameters
+
+
+    Agent->>Agent: Build GBIF search URL with filters
+    Agent->>+OccurrenceAPI: GET /occurrence/search?filters&limit=100
+    OccurrenceAPI->>-Agent: Paginated occurrence records
+
+    Agent->>Agent: Generate artifacts with portal URL metadata
+    Agent->>-User: Response summary
