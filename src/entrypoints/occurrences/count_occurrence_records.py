@@ -1,5 +1,8 @@
 import uuid
+import openai
+import json
 
+from dataclasses import dataclass
 from ichatbio.agent_response import ResponseContext, IChatBioAgentProcess
 from ichatbio.types import AgentEntrypoint
 
@@ -7,10 +10,14 @@ from src.gbif.api import GbifApi
 from src.gbif.fetch import execute_request
 from src.models.entrypoints import GBIFOccurrenceFacetsParams
 from src.models.validators import OccurrenceFacetsParamsValidator
-from src.log import with_logging
+from src.log import with_logging, logger
 
 from src.gbif.parser import parse
-from src.gbif.resolve_parameters import resolve_names_to_taxonkeys
+from src.gbif.resolve_parameters import (
+    resolve_names_to_taxonkeys,
+    resolve_pending_search_parameters,
+)
+import dataclasses
 
 
 description = """
@@ -31,6 +38,24 @@ entrypoint = AgentEntrypoint(
 )
 
 
+def serialize_for_log(obj):
+    # Pydantic v2
+    if hasattr(obj, "model_dump"):
+        return obj.model_dump(exclude_defaults=True)
+    # Dataclass
+    if dataclasses.is_dataclass(obj):
+        return dataclasses.asdict(obj)
+    # Fallback
+    return str(obj)
+
+
+@dataclass
+class ParameterResolutionResult:
+    search_params: GBIFOccurrenceFacetsParams
+    clarification_needed: bool
+    clarification_message: str = None
+
+
 @with_logging("count_occurrence_records")
 async def run(context: ResponseContext, request: str):
     """
@@ -40,38 +65,26 @@ async def run(context: ResponseContext, request: str):
 
     async with context.begin_process("Requesting GBIF statistics") as process:
         AGENT_LOG_ID = f"COUNT_OCCURRENCE_RECORDS_{str(uuid.uuid4())[:6]}"
+        logger.info(f"Agent log ID: {AGENT_LOG_ID}")
         await process.log(
             f"Request recieved: {request} \n\nGenerating iChatBio for GBIF request parameters..."
         )
+
         response = await parse(request, entrypoint.id, OccurrenceFacetsParamsValidator)
-        if response.clarification_needed:
-            await process.log(f"Clarification needed: {response.clarification_reason}")
-            await context.reply(f"{response.clarification_reason}")
+        logger.info(f"Parsed Response: {response}")
+        api = GbifApi()
+
+        param_result = await _get_parameters(response, request, api, process)
+
+        if param_result.clarification_needed:
+            await context.reply(param_result.clarification_message)
             return
 
-        params = response.search_parameters
-        description = response.artifact_description
-        await process.log(
-            "Generated search and facet parameters: ",
-            data=params.model_dump(exclude_defaults=True),
+        logger.info(
+            f"Search parameters: {serialize_for_log(param_result.search_params)}"
         )
 
-        api = GbifApi()
-        search_params = params
-
-        if params.scientificName:
-            await process.log(
-                f"Resolving {params.scientificName} scientific names to taxon keys for better search results..."
-            )
-            taxon_keys = await resolve_names_to_taxonkeys(
-                api, params.scientificName, process
-            )
-            if taxon_keys:
-                search_params = await _update_search_params(params, taxon_keys, process)
-            else:
-                await process.log(
-                    "Failed to resolve any scientific names to taxon keys, using original parameters."
-                )
+        search_params = param_result.search_params
 
         api_url = api.build_occurrence_facets_url(search_params)
         await process.log(f"Generated API URL: {api_url}")
@@ -137,17 +150,105 @@ def _generate_response_summary(page_info: dict, portal_url: str) -> str:
     return summary
 
 
-async def _update_search_params(
-    params: GBIFOccurrenceFacetsParams,
-    taxon_keys: list,
+async def _get_parameters(
+    response: OccurrenceFacetsParamsValidator,
+    request: str,
+    api: GbifApi,
     process: IChatBioAgentProcess,
-) -> GBIFOccurrenceFacetsParams:
-    taxon_key_ints = [int(key) for key in taxon_keys]
-    search_params_data = params.model_dump(exclude_defaults=True)
-    search_params_data["taxonKey"] = taxon_key_ints
-    search_params_data["scientificName"] = None
-    search_params = GBIFOccurrenceFacetsParams(**search_params_data)
-    await process.log(
-        f"Created new search parameters with taxon keys: {taxon_key_ints} and preserved other parameters"
+) -> ParameterResolutionResult:
+    """
+    Executes the occurrence facets entrypoint. Counts occurrence records using the provided
+    parameters and creates an artifact with the faceted results.
+    """
+    resolved_fields = {}
+    unresolved_fields = []
+    clarification_message = None
+    clarification_needed = response.clarification_needed
+
+    # Collect all updates first, then do a single copy operation
+    params_updates = {}
+
+    if response.clarification_needed:
+        resolved_fields, unresolved_fields = await resolve_pending_search_parameters(
+            response.unresolved_params or [], request, api, process
+        )
+        if resolved_fields:
+            params_updates.update(resolved_fields)
+        if unresolved_fields:
+            # Create params with current updates for the early return case
+            clarification_message = await _generate_resolution_message(
+                request,
+                response,
+                resolved_fields,
+                unresolved_fields,
+            )
+            return ParameterResolutionResult(
+                search_params=None,
+                clarification_needed=True,
+                clarification_message=clarification_message,
+            )
+        else:
+            clarification_needed = False
+
+    # Check if we need to resolve scientific names (before creating the final params)
+    base_params = response.params.model_copy(update=params_updates)
+    if getattr(base_params, "scientificName", None):
+        await process.log(
+            f"Resolving {base_params.scientificName} scientific names to taxon keys for better search results..."
+        )
+        taxon_keys = await resolve_names_to_taxonkeys(
+            api, base_params.scientificName, process
+        )
+        if taxon_keys:
+            params_updates.update(
+                {
+                    "taxonKey": [int(key) for key in taxon_keys],
+                    "scientificName": None,
+                }
+            )
+        else:
+            await process.log(
+                "Failed to resolve any scientific names to taxon keys, using original parameters"
+            )
+
+    # Single copy operation with all updates
+    params = response.params.model_copy(update=params_updates)
+
+    return ParameterResolutionResult(
+        search_params=params,
+        clarification_needed=clarification_needed,
+        clarification_message=clarification_message,
     )
-    return search_params
+
+
+async def _generate_resolution_message(
+    user_request: str,
+    response: OccurrenceFacetsParamsValidator,
+    resolved_fields: dict,
+    unresolved_fields: list,
+) -> str:
+    try:
+        messages = [
+            {
+                "role": "system",
+                "content": "You are a helpful assistant that crafts a brief message (don't make it an email) to clarify the search parameters. Include what were we able to resolve and what we still need to clarify.",
+            },
+            {
+                "role": "user",
+                "content": f"Generate the message for:\nUser request: {user_request}\nParsed Response: {json.dumps(response.model_dump(exclude_defaults=True))}\nResolved fields: {resolved_fields}\nUnresolved fields: {unresolved_fields}.",
+            },
+        ]
+        client = openai.AsyncOpenAI()
+        response = await client.chat.completions.create(
+            model="gpt-4.1-nano",
+            messages=messages,
+            max_tokens=200,
+        )
+        message_content = response.choices[0].message.content
+        return message_content
+
+    except Exception as e:
+        logger.error(
+            f"LLM extraction failed, falling back to default message: {str(e)}"
+        )
+        return "I encountered an error while trying to generate a message about the clarification required from the user about their search."

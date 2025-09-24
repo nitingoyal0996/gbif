@@ -1133,7 +1133,7 @@ class GBIFDatasetSearchParams(ProductionBaseModel):
 
     taxonKey: Optional[int] = Field(
         None,
-        description="A taxon key from the GBIF backbone.",
+        description="A taxonKey is the primary id number used in GBIF to id a species (or some higher group). These are the id numbers found in the GBIF backbone taxonomy. Often you will see them in the URL of an occurrence search: https://www.gbif.org/occurrence/search?taxon_key=7412043. These are the most important keys and usually what other keys map back to (rule of thumb: “all keys lead to taxonKeys”).",
         examples=[5231190, 2476674, 2877951],
     )
 

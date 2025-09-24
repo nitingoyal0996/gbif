@@ -1,6 +1,203 @@
 from src.gbif.api import GbifApi
 from src.gbif.fetch import execute_request
+from src.log import logger
 from ichatbio.agent_response import IChatBioAgentProcess
+
+"""
+Module for resolving taxonomic names to GBIF keys automatically.
+"""
+
+import instructor
+from dotenv import load_dotenv
+from pydantic import BaseModel, Field
+from typing import Dict, List, Optional, Tuple, Any
+from src.gbif.api import GbifApi
+from src.gbif.fetch import execute_request
+from ichatbio.agent_response import IChatBioAgentProcess
+
+load_dotenv()
+
+
+class TaxonomicExtraction(BaseModel):
+    """Model for LLM-based taxonomic name extraction."""
+
+    families: List[str] = Field(
+        default=[],
+        description="List of family names mentioned in the text (e.g., Apidae, Felidae, Ursidae)",
+    )
+    genera: List[str] = Field(
+        default=[],
+        description="List of genus names mentioned in the text (e.g., Homo, Quercus, Pinus)",
+    )
+    species: List[str] = Field(
+        default=[],
+        description="List of species names (binomial) mentioned in the text (e.g., Homo sapiens, Quercus alba)",
+    )
+    orders: List[str] = Field(
+        default=[],
+        description="List of order names mentioned in the text (e.g., Primates, Carnivora, Lepidoptera)",
+    )
+    classes: List[str] = Field(
+        default=[],
+        description="List of class names mentioned in the text (e.g., Mammalia, Aves, Insecta)",
+    )
+    phylums: List[str] = Field(
+        default=[],
+        description="List of phylum names mentioned in the text (e.g., Chordata, Arthropoda, Mollusca)",
+    )
+    kingdoms: List[str] = Field(
+        default=[],
+        description="List of kingdom names mentioned in the text (e.g., Animalia, Plantae, Fungi)",
+    )
+    note: str = Field(
+        default="",
+        description="Note about the taxonomic names extracted; why you extracted them",
+    )
+
+
+taxonomic_extraction_prompt = """You are a taxonomic expert. Extract all taxonomic names mentioned in the user's request.
+
+- Only extract names that are clearly taxonomic, not common names
+- Be conservative - only extract names you're confident about
+- Return empty lists for ranks not mentioned in the text
+
+Examples:
+- "bees (family: Apidae, Andrenidae)" → families: ["Apidae", "Andrenidae"]
+- "Homo sapiens and Pan troglodytes" → species: ["Homo sapiens", "Pan troglodytes"], genera: ["Homo", "Pan"]
+- "order Carnivora" → orders: ["Carnivora"]
+- "butterflies from family Nymphalidae" → families: ["Nymphalidae"]"""
+
+
+resolvable_fields = {
+    "familyKey": "family",
+    "genusKey": "genus",
+    "speciesKey": "species",
+    "orderKey": "order",
+    "classKey": "class",
+    "phylumKey": "phylum",
+    "kingdomKey": "kingdom",
+    # ... add more taxonomic fields here
+}
+
+
+async def resolve_field_from_request(
+    api: GbifApi, process: IChatBioAgentProcess, field_name: str, user_request: str
+) -> Optional[List[int]]:
+    if field_name not in resolvable_fields:
+        return None
+    rank = resolvable_fields[field_name]
+    extraction = await extract_taxonomic_names(process, user_request)
+    rank_mapping = {
+        "family": extraction.families,
+        "genus": extraction.genera,
+        "species": extraction.species,
+        "order": extraction.orders,
+        "class": extraction.classes,
+        "phylum": extraction.phylums,
+        "kingdom": extraction.kingdoms,
+    }
+    names = rank_mapping.get(rank, [])
+    if not names:
+        return None
+    await process.log(f"Attempting to resolve {rank} names: {names}")
+
+    resolved_keys = []
+    for name in names:
+        key = await resolve_name_to_key(api, process, name, rank)
+        if key:
+            resolved_keys.append(key)
+            await process.log(f"Successfully resolved {rank} '{name}' to key: {key}")
+        else:
+            await process.log(f"Failed to resolve {rank} '{name}'")
+    return resolved_keys if resolved_keys else None
+
+
+async def extract_taxonomic_names(
+    process: IChatBioAgentProcess, user_request: str
+) -> TaxonomicExtraction:
+    await process.log("Using LLM to extract taxonomic names from request")
+    try:
+        openai_client = instructor.from_provider(
+            "openai/gpt-4.1",
+            async_client=True,
+        )
+        messages = [
+            {"role": "system", "content": taxonomic_extraction_prompt},
+            {
+                "role": "user",
+                "content": f"Extract taxonomic names from: {user_request}",
+            },
+        ]
+        response = await openai_client.chat.completions.create(
+            messages=messages,
+            response_model=TaxonomicExtraction,
+        )
+        await process.log(f"LLM extracted taxonomic names: {response.model_dump()}")
+        return response
+    except Exception as e:
+        await process.log(
+            f"LLM extraction failed, falling back to empty extraction: {str(e)}"
+        )
+        return TaxonomicExtraction()
+
+
+async def resolve_name_to_key(
+    api: GbifApi, process: IChatBioAgentProcess, name: str, expected_rank: str
+) -> Optional[int]:
+    try:
+        url = api.build_species_match_url(name)
+        logger.info(f"Resolving name to key: {url}")
+        result = await execute_request(url)
+        if result.get("usage") and result.get("usage", {}).get("key"):
+            usage = result["usage"]
+            key = usage.get("key")
+            rank = usage.get("rank", "").lower()
+            if rank == expected_rank.upper() or rank == expected_rank.lower():
+                return key
+            else:
+                await process.log(
+                    f"Rank mismatch for '{name}': expected {expected_rank}, got {rank}"
+                )
+                return None
+        return None
+    except Exception as e:
+        await process.log(f"Error resolving '{name}': {str(e)}")
+        return None
+
+
+async def resolve_pending_search_parameters(
+    unresolved_params: List[str],
+    user_request: str,
+    api: GbifApi,
+    process: IChatBioAgentProcess,
+) -> Tuple[Dict[str, List[int]], List[str]]:
+    """
+    Attempt to resolve clarification fields automatically.
+
+    Args:
+        unresolved_params: List of fields that need clarification
+        user_request: Original user request
+        api: GBIF API instance
+        process: Process for logging
+
+    Returns:
+        Tuple of (resolved_fields_dict, remaining_unresolved_fields)
+    """
+    resolved = {}
+    unresolved = []
+
+    for field in unresolved_params:
+        resolved_keys = await resolve_field_from_request(
+            api, process, field, user_request
+        )
+        if resolved_keys:
+            resolved[field] = resolved_keys
+            await process.log(f"Resolved {field}: {resolved_keys}")
+        else:
+            unresolved.append(field)
+            await process.log(f"Could not auto-resolve {field}")
+
+    return resolved, unresolved
 
 
 async def resolve_names_to_taxonkeys(
