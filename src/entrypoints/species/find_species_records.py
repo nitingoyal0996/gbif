@@ -40,9 +40,7 @@ async def run(context: ResponseContext, request: str):
     async with context.begin_process("Requesting GBIF Species Records") as process:
         AGENT_LOG_ID = f"FIND_SPECIES_RECORDS_{str(uuid.uuid4())[:6]}"
         logger.info(f"Agent log ID: {AGENT_LOG_ID}")
-        await process.log(
-            f"Request received: {request} \n\nGenerating iChatBio for GBIF request parameters..."
-        )
+        await process.log(f"Request received: {request} \n\nParsing request...")
 
         response = await parse(request, entrypoint.id, SpeciesSearchParamsValidator)
         if response.clarification_needed:

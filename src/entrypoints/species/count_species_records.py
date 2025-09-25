@@ -76,8 +76,8 @@ async def run(context: ResponseContext, request: str):
             # create a log of some informative fields from the response about the record
             page_info = {
                 "count": raw_response.get("count"),
-                "limit": raw_response.get("limit"),
-                "offset": raw_response.get("offset"),
+                "facetLimit": params.facetLimit,
+                "facetOffset": params.facetOffset,
             }
             await process.log(
                 "API pagination information of the response: ", data=page_info

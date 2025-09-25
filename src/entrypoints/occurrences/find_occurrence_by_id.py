@@ -37,9 +37,7 @@ async def run(context: ResponseContext, request: str):
     async with context.begin_process("Requesting GBIF Occurrence by ID") as process:
         AGENT_LOG_ID = f"FIND_OCCURRENCE_BY_ID_{str(uuid.uuid4())[:6]}"
         logger.info(f"Agent log ID: {AGENT_LOG_ID}")
-        await process.log(
-            f"Request received: {request} \n\nGenerating iChatBio for GBIF request parameters..."
-        )
+        await process.log(f"Request received: {request} \n\nParsing request...")
 
         response = await parse(
             request, entrypoint.id, OccurrenceSearchByIdParamsValidator
@@ -102,7 +100,7 @@ async def run(context: ResponseContext, request: str):
                 "recordedBy": raw_response.get("recordedBy"),
                 "publishingCountry": raw_response.get("publishingCountry"),
             }
-            await process.log("Subset of response - ", data=subset_response)
+            await process.log("Record information - ", data=subset_response)
 
             portal_url = api.build_portal_url(api_url)
 
