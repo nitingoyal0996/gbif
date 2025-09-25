@@ -683,6 +683,24 @@ class GBIFOccurrenceBaseParams(ProductionBaseModel):
         examples=[["Lava Dam Member"]],
     )
 
+    associatedSequences: Optional[List[str]] = Field(
+        None,
+        description="A list (concatenated and separated) of identifiers (publication, global unique identifier, URI) of genetic sequence information associated with the material entity.",
+        examples=[["http://www.ncbi.nlm.nih.gov/nuccore/U34853.1"]],
+    )
+
+    datasetId: Optional[List[str]] = Field(
+        None,
+        description="An identifier for the set of data. May be a global unique identifier or an identifier specific to a collection or institution. externalDocs: https://rs.tdwg.org/dwc/terms/datasetID",
+        examples=[["https://doi.org/10.1594/PANGAEA.315492"]],
+    )
+
+    verbatimScientificName: Optional[List[str]] = Field(
+        None,
+        description="The scientific name provided to GBIF by the data publisher, before interpretation and processing by GBIF. Parameter may be repeated.",
+        examples=[["Quercus robur L."]],
+    )
+
     # Pagination parameters
     limit: Optional[int] = Field(
         100,
