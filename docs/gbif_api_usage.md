@@ -6,9 +6,9 @@
   \
 **Purpose**: Discover occurrence records based on taxonomic, geographic, temporal, and methodological criteria.
 
-The occurrence search functionality utilizes the `GET /v1/occurrence/search` endpoint. The system supports comprehensive filters available via GBIF API. API parameters are enabled via pydantic model [GBIFOccurrenceBaseParams](../src/models/entrypoints.py#L38).
+The occurrence search functionality utilizes the `GET /v1/occurrence/search` endpoint. The system supports comprehensive filters available via GBIF API. API parameters obey the constraints specified by the API documentation - [GBIFOccurrenceBaseParams](../src/models/entrypoints.py#L38).
 
-As of now, we do not support for the following parameters: bed, biostratigraphy, checklistKey, coordinateUncertaintyInMeters, crawlId, degreeOfEstablishment, endDayOfYear, establishmentMeans, fieldNumber, formation, gadmGid, gadmLevel0Gid, gadmLevel1Gid, gadmLevel2Gid, gadmLevel3Gid, group, hostingOrganizationKey, institutionKey, isInCluster, iucnRedListCategory, latestAgeOrHighestStage, latestEonOrHighestEonothem, latestEpochOrHighestSeries, latestEraOrHighestErathem, latestPeriodOrHighestSystem, lowestBiostratigraphicZone, modified, organismId, organismQuantity, organismQuantityType, otherCatalogNumbers, parentEventId, pathway, programme, protocol, publishedByGbifRegion, recordedByID, relativeOrganismQuantity, repatriated, sampleSizeUnit, sampleSizeValue, samplingProtocol, startDayOfYear, taxonConceptId, taxonId, taxonomicIssue.
+At this time, we support all search parameters except the following: bed, biostratigraphy, checklistKey, coordinateUncertaintyInMeters, crawlId, degreeOfEstablishment, endDayOfYear, establishmentMeans, fieldNumber, formation, gadmGid, gadmLevel0Gid, gadmLevel1Gid, gadmLevel2Gid, gadmLevel3Gid, group, hostingOrganizationKey, institutionKey, isInCluster, iucnRedListCategory, latestAgeOrHighestStage, latestEonOrHighestEonothem, latestEpochOrHighestSeries, latestEraOrHighestErathem, latestPeriodOrHighestSystem, lowestBiostratigraphicZone, modified, organismId, organismQuantity, organismQuantityType, otherCatalogNumbers, parentEventId, pathway, programme, protocol, publishedByGbifRegion, recordedByID, relativeOrganismQuantity, repatriated, sampleSizeUnit, sampleSizeValue, samplingProtocol, startDayOfYear, taxonConceptId, taxonId, taxonomicIssue.
 
 **Example Query:** "Find records of birds in Gainesville, Florida, United States from 2014-2016"
 
@@ -50,7 +50,7 @@ Species discovery employs the `GET /v1/species/search` endpoint. This supports s
 
 The search system provides flexible query capabilities supporting both scientific names and vernacular names as query fields. Filtering options also include taxonomic rank, conservation status, habitat preferences, threat levels, and dataset-specific searches.
 
-The system supports comprehensive filters available via GBIF API. API parameters are enabled via pydantic model [GBIFSpeciesSearchParams](../src/models/entrypoints.py#L740). As of now, we do not have support for the following parameters: scientificNameID, sourceId, taxonConceptID, taxonID, usageKey.
+The system supports comprehensive filters available via GBIF API. The API parameters obey the constraints specified by the API documentation [GBIFSpeciesSearchParams](../src/models/entrypoints.py#L740). As of now, we do not have support for the following parameters: scientificNameID, sourceId, taxonConceptID, taxonID, usageKey.
 
 **Example Query:** "Search for species named Quercus"
 
@@ -87,7 +87,7 @@ The search system provides extensive filtering capabilities across multiple dime
 **Example Query:** "Find datasets about marine biodiversity from Nordic countries"
 
 
-## GBIF integration
+### API Integration
 
 - For each usage; agent generates the API request url as well as portal integration url which maintains continuity by providing direct links to corresponding dataset portal pages for detailed exploration to the users
   \
@@ -103,8 +103,6 @@ https://api.gbif.org/v1/occurrence/search?taxonKey=212&country=US
 https://gbif.org/occurrence/search?taxonKey=212&country=US
 ```
 ---
-
-## Parameter Processing
 
 ### GBIF Enums
 Enums parameter values taken from the GBIF OpenAPI Specifications JSON
@@ -141,7 +139,7 @@ When users provide taxonomic names without specific keys, the system:
 Source: [gbif/resolve_parameters.py](../src/gbif/resolve_parameters.py)
 
 
-## Example Usage: Find occurrence records
+### Example: Find occurrence records
   \
 Source: [entrypoints/occurrences/find_occurrence_records.py](../src/entrypoints/occurrences/find_occurrence_records.py)
 
