@@ -65,7 +65,7 @@ The validations ensures parameter generation accuracy in the LLM response:
 ![Line Diagram](docs/diagram.png)
 
 ## Entrypoint overview
-/docs/entrypoints_overview.md
+[entrypoints_overview.md](docs/entrypoints_overview.md)
 
 ## gbif api usage
-/docds/gbif_usage.md
+[gbif_api_usage.md](docs/gbif_api_usage.md)
