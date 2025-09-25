@@ -1,34 +1,32 @@
-# GBIF Agent
-
-## Usage Categories
+# GBIF API: Agent Usage
 
 ### 1. Occurrence Data Retrieval
 
-#### Use Case 1.1: Individual Occurrence Record Retrieval  
+#### Use Case 1.1: Occurrence Record Search
+  \
+**Purpose**: Discover occurrence records based on taxonomic, geographic, temporal, and methodological criteria.
+
+The occurrence search functionality utilizes the `GET /v1/occurrence/search` endpoint. The system supports comprehensive filters available via GBIF API. API parameters are enabled via pydantic model [GBIFOccurrenceBaseParams](../src/models/entrypoints.py#L38).
+
+As of now, we do not have support for the following parameters: bed, biostratigraphy, checklistKey, coordinateUncertaintyInMeters, crawlId, degreeOfEstablishment, endDayOfYear, establishmentMeans, fieldNumber, formation, gadmGid, gadmLevel0Gid, gadmLevel1Gid, gadmLevel2Gid, gadmLevel3Gid, group, hostingOrganizationKey, institutionKey, isInCluster, iucnRedListCategory, latestAgeOrHighestStage, latestEonOrHighestEonothem, latestEpochOrHighestSeries, latestEraOrHighestErathem, latestPeriodOrHighestSystem, lowestBiostratigraphicZone, modified, organismId, organismQuantity, organismQuantityType, otherCatalogNumbers, parentEventId, pathway, programme, protocol, publishedByGbifRegion, recordedByID, relativeOrganismQuantity, repatriated, sampleSizeUnit, sampleSizeValue, samplingProtocol, startDayOfYear, taxonConceptId, taxonId, taxonomicIssue.
+
+**Example Query:** "Find records of birds in Gainesville, Florida, United States from 2014-2016"
+
+#### Use Case 1.2: Occurrence Record Statstics
+  \
+**Purpose:** Search and breakdowns of occurrence data
+
+Aggregation uses the same `GET /v1/occurrence/search` endpoint but with GBIF faceting parameters. The request pattern mirrors standard search functionality but automatically sets `limit=0` and includes one or more facet parameters to generate aggregated counts. The faceting system supports any valid occurrence parameter as a grouping dimension available via the GBIF API for faceting operations (except `scientificName` - using this as facet parameter - results in a 404 error.).
+
+**Example Query:** "How many species occurrences does GBIF have for Temperate Asia?"
+
+#### Use Case 1.3: Individual Occurrence Record Retrieval  
   \
 **Purpose**: Retrieve detailed information about specific biodiversity observations or specimens from GBIF.
 
 Agent uses the `GET /v1/occurrence/{gbifId}` endpoint. This follows a direct ID-based lookup pattern where the response provides a single occurrence record with complete metadata.
 
 **Example Query:** "Find occurrence record 5292056925"
-
-#### Use Case 1.2: Occurrence Record Search
-
-Discover occurrence records based on taxonomic, geographic, temporal, and methodological criteria.
-
-The occurrence search functionality utilizes the `GET /v1/occurrence/search` endpoint. This endpoint supports multi-parameter filtering with paginated results with offset parameters.
-
-The system supports comprehensive filtering across multiple categories. Taxonomic filters include scientificName, taxonKey, and hierarchical taxonomic keys such as kingdomKey, phylumKey, classKey, orderKey, familyKey, genusKey, and speciesKey. Geographic filtering encompasses country, continent, stateProvince, decimalLatitude, decimalLongitude, and complex geometry parameters. Temporal filtering supports year, month, eventDate, and dateRange specifications. Data quality filters include basisOfRecord, occurrenceStatus, hasCoordinate, and hasGeospatialIssue parameters. Institutional filtering covers institutionCode, collectionCode, datasetKey, and publishingOrg. Collection-specific filters include recordedBy, identifiedBy, catalogNumber, and recordNumber parameters.
-
-**Example Query:** "Find records of birds in Gainesville, Florida, United States from 2014-2016"
-
-#### Use Case 1.3: Occurrence Record Faceted Search
-  \
-**Purpose:** Search and breakdowns of occurrence data
-
-Aggregation uses the same `GET /v1/occurrence/search` endpoint but with GBIF faceting parameters. The request pattern mirrors standard search functionality but automatically sets `limit=0` and includes facet parameters to generate aggregated counts grouped by specified dimensions. The faceting system supports any valid occurrence parameter as a grouping dimension supported by the GBIF API for faceting operations.
-
-**Example Query:** "How many species occurrences does GBIF have for Temperate Asia?"
 
 ### 2. Species and Taxonomic Information Services
 
@@ -37,11 +35,11 @@ Aggregation uses the same `GET /v1/occurrence/search` endpoint but with GBIF fac
   \
 **Purpose:** Convert scientific names to standardized GBIF identifiers
 
-Scientific name resolution utilizes the `GET /v2/species/match` endpoint. If there is a scientific name strings in input and it returns matched taxa with usage keys and taxonomic hierarchy information. The agent entrypoint automatically invokes this service internally whenever scientificName parameters are provided in user queries. It is similar to using `rgbif` package search
+Scientific name resolution utilizes the `GET /v2/species/match` endpoint. If there is a scientific name strings in input and it returns matched taxa with usage keys and taxonomy. The agent automatically invokes this service internally whenever scientificName parameters are parsed and identified in user queries. It is similar to using `rgbif` package search
 
-The resolution process follows a systematic approach beginning with the extraction of scientific names from user queries using LLM parsing. The system then calls the species match API for each identified name and validates that the returned taxonomic rank matches the expected taxonomic level. Successfully resolved names result in the replacement of scientificName parameters with their corresponding taxonKeys for improved search performance. Throughout this process, the system generates detailed artifacts for tracking resolution results and maintaining data provenance.
+The resolution process follows a systematic approach beginning with the extraction of scientific names from user queries using LLM parsing. The system then calls the species match API for each identified name and validates that the returned taxonomic rank matches the expected taxonomic level. Successfully resolved names result in the replacement of scientificName parameters with their corresponding taxonKeys for improved search performance. It is possible that GBIF `/match` returns multiple records for a scientificName, in that case, the agent uses LLM call to pick the records that matches closest to the user query. Throughout this process, the system generates artifacts for tracking resolution results and maintaining data provenance.
 
-**Example Query:** N/A. Agent usage it internally
+**Example Query:** N/A. Agent uses this internally.
 
 #### Use Case 2.2: Species Search
 
@@ -52,9 +50,11 @@ Species discovery employs the `GET /v1/species/search` endpoint. This supports s
 
 The search system provides flexible query capabilities supporting both scientific names and vernacular names as query fields. Filtering options also include taxonomic rank, conservation status, habitat preferences, threat levels, and dataset-specific searches.
 
+The system supports comprehensive filters available via GBIF API. API parameters are enabled via pydantic model [GBIFSpeciesSearchParams](../src/models/entrypoints.py#L740). As of now, we do not have support for the following parameters: scientificNameID, sourceId, taxonConceptID, taxonID, usageKey.
+
 **Example Query:** "Search for species named Quercus"
 
-#### Use Case 2.3: Species Faceted Search
+#### Use Case 2.3: Taxonomic Name Statistics
 
   \
 **Purpose:** search and breakdown species data
@@ -67,9 +67,9 @@ This utilizes the same `GET /v1/species/search` endpoint with GBIF faceting para
 #### Use Case 2.4: Species Taxonomic Information Retrieval
 
   \
-**Purpose:** Gather complete taxonomic context including hierarchy, relationships, and synonymy.
+**Purpose:** Gather information about a taxonomic name including classification, relationships, and synonymy.
 
-Comprehensive taxonomic information retrieval employs a sophisticated multi-endpoint approach utilizing parallel API calls to gather complete taxonomic context. It queries multiple endpoints including the primary species endpoint `GET /v1/species/{key}`, taxonomic hierarchy through `GET /v1/species/{key}/parents`, child taxa via `GET /v1/species/{key}/children`, synonymous names through `GET /v1/species/{key}/synonyms`, and detailed name information using `GET /v1/species/{key}/name`. The agent determine the API calls based on user query intent.
+Comprehensive taxonomic information retrieval employs a sophisticated multi-endpoint approach utilizing parallel API calls to gather information about a taxonomic name. It queries multiple endpoints including the primary species endpoint `GET /v1/species/{key}`, taxonomic classification through `GET /v1/species/{key}/parents`, child taxa via `GET /v1/species/{key}/children`, synonymous names through `GET /v1/species/{key}/synonyms`, and detailed name information using `GET /v1/species/{key}/name`. The agent determine the API calls based on user query intent.
 
 **Example Query:** "Get taxonomic information for Rattus including synonyms and children"
 
@@ -86,9 +86,12 @@ The search system provides extensive filtering capabilities across multiple dime
 
 **Example Query:** "Find datasets about marine biodiversity from Nordic countries"
 
-## Portal integration - URL Translation
 
-- For each usage; agent generates the API request url as well as portal integration url which maintains continuity by providing direct links to corresponding dataset portal pages for detailed exploration to the users.
+## GBIF integration
+
+- For each usage; agent generates the API request url as well as portal integration url which maintains continuity by providing direct links to corresponding dataset portal pages for detailed exploration to the users
+  \
+Source Code: [gbif/api.py](../src/gbif/api.py).
 
 API URLs are automatically converted to corresponding portal URLs:
 
@@ -103,8 +106,10 @@ https://gbif.org/occurrence/search?taxonKey=212&country=US
 
 ## Parameter Processing
 
-### Enums
-The agent automatically converts enumerated values to their string representations using pydantic models. Enums for variables are the same as described in the GBIF OpenAPI Specifications.
+### GBIF Enums
+Enums parameter values taken from the GBIF OpenAPI Specifications JSON
+  \
+Source Code: [models/enums/](/home/nitingoyal/nitingoyal/ichatbio/agents/gbif/src/models/enums)
 
 ```python
 # Enum values extracted using .value attribute
@@ -132,9 +137,13 @@ When users provide taxonomic names without specific keys, the system:
 2. Resolves names to GBIF keys via species match API
 3. Maps resolved keys to appropriate parameter fields
 4. Updates request parameters before API calls
+  \
+Source: [gbif/resolve_parameters.py](../src/gbif/resolve_parameters.py)
 
 
 ## Example Usage: Find occurrence records
+  \
+Source: [entrypoints/occurrences/find_occurrence_records.py](../src/entrypoints/occurrences/find_occurrence_records.py)
 
 ![GBIF Agent Architecture](diagram.png)
 
