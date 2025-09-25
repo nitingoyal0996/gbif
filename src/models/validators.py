@@ -74,9 +74,12 @@ class FacetValidationMixin:
         allowed = cls.allowed_facet_fields()
         invalid = [f for f in v if f not in allowed]
 
-        if "scientificName" in v:
+        invalid_special = [
+            f for f in v if f in {"scientificName", "geoDistance", "geometry"}
+        ]
+        if invalid_special:
             raise ValueError(
-                f"Fields are not valid facets: ['scientificName']. You should remove this field from facet parameter values and use a different field if available."
+                f"Fields are not valid facets for GBIF API: {invalid_special}. You should remove these field(s) from facet parameter values and use different fields if available."
             )
 
         if invalid:
