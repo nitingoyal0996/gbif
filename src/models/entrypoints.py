@@ -305,7 +305,7 @@ class GBIFOccurrenceBaseParams(ProductionBaseModel):
 
     eventDate: Optional[List[str]] = Field(
         None,
-        description="Occurrence date in ISO 8601 format: yyyy, yyyy-MM or yyyy-MM-dd. Supports range queries. For instance: eventDate='2020,2023' will return all records from 2020 and 2023.",
+        description="Occurrence date in ISO 8601 format: yyyy, yyyy-MM or yyyy-MM-dd.\n\n*Parameter may be repeated or a range.",
         examples=[["2020"], ["2020-01", "2020-12"], ["2000,2001-06-30"]],
     )
 
