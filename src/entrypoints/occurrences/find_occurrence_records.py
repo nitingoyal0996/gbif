@@ -57,9 +57,7 @@ async def run(context: ResponseContext, request: str):
     async with context.begin_process("Requesting GBIF Occurrence Records") as process:
         AGENT_LOG_ID = f"FIND_OCCURRENCE_RECORDS_{str(uuid.uuid4())[:6]}"
         logger.info(f"Agent log ID: {AGENT_LOG_ID}")
-        await process.log(
-            f"Request recieved: {request} \n\nGenerating iChatBio for GBIF request parameters..."
-        )
+        await process.log(f"Request recieved: {request} \n\nParsing request...")
 
         response = await parse(request, entrypoint.id, OccurrenceSearchParamsValidator)
         logger.info(f"Parsed Response: {response}")
@@ -67,28 +65,31 @@ async def run(context: ResponseContext, request: str):
 
         param_result = await _get_parameters(response, request, api, process)
 
+        await process.log(
+            f"Search API parameters results -", data=serialize_for_log(param_result)
+        )
+
         if param_result.clarification_needed:
             await context.reply(param_result.clarification_message)
             return
 
-        logger.info(
-            f"Search parameters: {serialize_for_log(param_result.search_params)}"
-        )
+        search_params = param_result.search_params
 
-        api_url = api.build_occurrence_search_url(param_result.search_params)
-        await process.log(f"Constructed API URL: {api_url}")
+        api_url = api.build_occurrence_search_url(search_params)
 
         try:
-            await process.log("Querying GBIF for occurrence data...")
+            await process.log(
+                f"Sending data retrieval request to GBIF -", data={"url": api_url}
+            )
             raw_response = await execute_request(api_url)
             status_code = raw_response.get("status_code", 200)
             if status_code != 200:
                 await process.log(
-                    f"Data retrieval failed with status code {status_code}",
+                    f"Data retrieval failed with status code {status_code} -",
                     data=raw_response,
                 )
                 await context.reply(
-                    f"Data retrieval failed with status code {status_code}",
+                    f"Data retrieval failed with status code {status_code}"
                 )
                 return
             await process.log(f"Data retrieval successful, status code {status_code}")
@@ -99,14 +100,16 @@ async def run(context: ResponseContext, request: str):
                 "offset": raw_response.get("offset"),
             }
             await process.log(
-                "API pagination information of the response: ", data=page_info
+                "API pagination information of the response -", data=page_info
             )
-            await process.log("Processing response and preparing artifact...")
 
             portal_url = api.build_portal_url(api_url)
+            artifact_description = await _generate_artifact_description(
+                page_info, portal_url
+            )
             await process.create_artifact(
                 mimetype="application/json",
-                description=description,
+                description=artifact_description,
                 uris=[api_url],
                 metadata={
                     "portal_url": portal_url,
@@ -167,6 +170,10 @@ async def _get_parameters(
     params_updates = {}
 
     if response.clarification_needed:
+        await process.log(
+            f"{response.clarification_reason} -",
+            data={"unresolved_params": response.unresolved_params},
+        )
         resolved_fields, unresolved_fields = await resolve_pending_search_parameters(
             response.unresolved_params or [], request, api, process
         )
@@ -186,13 +193,14 @@ async def _get_parameters(
                 clarification_message=clarification_message,
             )
         else:
+            await process.log(f"Request parsed successfully...")
             clarification_needed = False
 
     # Check if we need to resolve scientific names (before creating the final params)
     base_params = response.params.model_copy(update=params_updates)
     if getattr(base_params, "scientificName", None):
         await process.log(
-            f"Resolving {base_params.scientificName} scientific names to taxon keys for better search results..."
+            f"Resolving {base_params.scientificName} scientific names to taxon keys..."
         )
         taxon_keys = await resolve_names_to_taxonkeys(
             api, base_params.scientificName, process
@@ -250,3 +258,26 @@ async def _generate_resolution_message(
             f"LLM extraction failed, falling back to default message: {str(e)}"
         )
         return "I encountered an error while trying to generate a message about the clarification required from the user about their search."
+
+
+async def _generate_artifact_description(page_info: dict, portal_url: str) -> str:
+    try:
+        messages = [
+            {
+                "role": "system",
+                "content": "You are a helpful assistant that crafts a brief description of the artifact.",
+            },
+        ]
+        client = openai.AsyncOpenAI()
+        response = await client.chat.completions.create(
+            model="gpt-4.1-nano",
+            messages=messages,
+            max_tokens=200,
+        )
+        message_content = response.choices[0].message.content
+        return message_content
+    except Exception as e:
+        logger.error(
+            f"LLM extraction failed, falling back to default description: {str(e)}"
+        )
+        return "I encountered an error while trying to generate a description of the artifact."

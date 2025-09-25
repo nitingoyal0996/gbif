@@ -74,8 +74,6 @@ async def run(context: ResponseContext, request: str):
                 return
             await process.log(f"Data retrieval successful, status code {status_code}")
 
-            await process.log("Processing response and preparing artifact...")
-
             total = raw_response.get("count", 0)
             portal_url = api.build_portal_url(api_url)
 

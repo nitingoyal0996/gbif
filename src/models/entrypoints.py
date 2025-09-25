@@ -720,6 +720,21 @@ class GBIFOccurrenceFacetsParams(GBIFOccurrenceBaseParams):
         ],
     )
 
+    facetLimit: Optional[int] = Field(
+        100,
+        ge=1,
+        max=500,
+        description="Used in combination with the facet parameter. Set facetLimit={#} to limit the number of facets returned.",
+        examples=[10, 20, 50],
+    )
+    
+    facetOffset: Optional[int] = Field(
+        0,
+        ge=0,
+        description="Used in combination with the facet parameter. Set facetOffset={#} to offset the number of facets returned.",
+        examples=[10, 30, 80],
+    )
+
     facetMincount: Optional[int] = Field(
         1,
         ge=1,
@@ -939,7 +954,7 @@ class GBIFSpeciesFacetsParams(GBIFSpeciesSearchParams):
     facetLimit: Optional[int] = Field(
         None,
         ge=1,
-        description="When we do not use this Maximum number of facet values to return per facet field. This should be set to maximum value",
+        description="Maximum number of facet values to return per facet field.",
         examples=[10, 50, 100],
     )
 
@@ -1235,6 +1250,7 @@ class GBIFDatasetSearchParams(ProductionBaseModel):
     facetLimit: Optional[int] = Field(
         None,
         ge=1,
+        max=500,
         description="Facet parameters allow paging requests using the parameters facetOffset and facetLimit.",
         examples=[10, 50, 100],
     )

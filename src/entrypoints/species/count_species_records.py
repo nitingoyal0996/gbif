@@ -82,7 +82,6 @@ async def run(context: ResponseContext, request: str):
             await process.log(
                 "API pagination information of the response: ", data=page_info
             )
-            await process.log("Processing response and preparing artifact...")
 
             portal_url = api.build_portal_url(api_url)
 

@@ -25,7 +25,7 @@ class GbifApi:
     def _convert_to_api_params(self, params) -> Dict[str, Any]:
         api_params = {}
 
-        for field_name, value in params.model_dump(exclude_defaults=True).items():
+        for field_name, value in params.model_dump().items():
             if value is None:
                 continue
 

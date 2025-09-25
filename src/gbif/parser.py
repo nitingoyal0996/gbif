@@ -121,7 +121,8 @@ async def parse(
     except InstructorRetryException as e:
         # Access failed attempts for debugging
         print(f"Failed after {e.n_attempts} attempts")
-        for attempt in e.failed_attempts:
-            print(f"Attempt {attempt.attempt_number}: {attempt.exception}")
+        print(f"Exception details: {e}")
+    except Exception as e:
+            print(f"Exception details: {e}")
 
     return response

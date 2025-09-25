@@ -1,6 +1,5 @@
 from src.gbif.api import GbifApi
 from src.gbif.fetch import execute_request
-from src.log import logger
 from ichatbio.agent_response import IChatBioAgentProcess
 
 """
@@ -99,14 +98,13 @@ async def resolve_field_from_request(
     names = rank_mapping.get(rank, [])
     if not names:
         return None
-    await process.log(f"Attempting to resolve {rank} names: {names}")
 
     resolved_keys = []
     for name in names:
         key = await resolve_name_to_key(api, process, name, rank)
         if key:
             resolved_keys.append(key)
-            await process.log(f"Successfully resolved {rank} '{name}' to key: {key}")
+            await process.log(f"Resolved {rank} '{name}' to {key}")
         else:
             await process.log(f"Failed to resolve {rank} '{name}'")
     return resolved_keys if resolved_keys else None
@@ -115,7 +113,7 @@ async def resolve_field_from_request(
 async def extract_taxonomic_names(
     process: IChatBioAgentProcess, user_request: str
 ) -> TaxonomicExtraction:
-    await process.log("Using LLM to extract taxonomic names from request")
+    await process.log("Diving deeper...")
     try:
         openai_client = instructor.from_provider(
             "openai/gpt-4.1",
@@ -125,14 +123,14 @@ async def extract_taxonomic_names(
             {"role": "system", "content": taxonomic_extraction_prompt},
             {
                 "role": "user",
-                "content": f"Extract taxonomic names from: {user_request}",
+                "content": f"Identified taxonomy: {user_request}",
             },
         ]
         response = await openai_client.chat.completions.create(
             messages=messages,
             response_model=TaxonomicExtraction,
         )
-        await process.log(f"LLM extracted taxonomic names: {response.model_dump()}")
+        await process.log(f"Taxonomic names extracted", data=response.model_dump())
         return response
     except Exception as e:
         await process.log(
@@ -146,8 +144,16 @@ async def resolve_name_to_key(
 ) -> Optional[int]:
     try:
         url = api.build_species_match_url(name)
-        logger.info(f"Resolving name to key: {url}")
+        await process.log(f"Attempting to resolve {expected_rank} names: {name}", data={'url': url})
         result = await execute_request(url)
+        await process.create_artifact(
+            mimetype="application/json",
+            description=f"GBIF Species Match API call results for: {name}",
+            uris=[url],
+            metadata={
+                "data_source": "GBIF Species Match",
+            },
+        )
         if result.get("usage") and result.get("usage", {}).get("key"):
             usage = result["usage"]
             key = usage.get("key")
@@ -156,7 +162,7 @@ async def resolve_name_to_key(
                 return key
             else:
                 await process.log(
-                    f"Rank mismatch for '{name}': expected {expected_rank}, got {rank}"
+                    f"Rank mismatch for '{name}' expected {expected_rank}, got {rank}"
                 )
                 return None
         return None
@@ -192,7 +198,6 @@ async def resolve_pending_search_parameters(
         )
         if resolved_keys:
             resolved[field] = resolved_keys
-            await process.log(f"Resolved {field}: {resolved_keys}")
         else:
             unresolved.append(field)
             await process.log(f"Could not auto-resolve {field}")
@@ -219,19 +224,15 @@ async def resolve_names_to_taxonkeys(
     for name in scientific_names:
         result = None
         try:
-            await process.log(f"Resolving scientific name: {name}")
-
             # Use the species match endpoint to resolve the name
             url = api.build_species_match_url(name)
+            await process.log(f"URL for name match: {url}")
             result = await execute_request(url)
 
             # Check if we have a successful match in the 'usage' field
             if result.get("usage") and result.get("usage", {}).get("key"):
                 taxon_key = result["usage"]["key"]
                 taxon_keys.append(taxon_key)
-                await process.log(
-                    f"Successfully resolved '{name}' to taxon key: {taxon_key}"
-                )
                 await process.create_artifact(
                     mimetype="application/json",
                     description=f"GBIF Species Match API call results for: {name}",
@@ -260,6 +261,6 @@ async def resolve_names_to_taxonkeys(
             continue
 
     await process.log(
-        f"Taxonomic resolution complete. Resolved {len(taxon_keys)} out of {len(scientific_names)} names."
+        f"Resolved {len(taxon_keys)} out of {len(scientific_names)} names."
     )
     return taxon_keys

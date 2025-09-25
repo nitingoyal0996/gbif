@@ -124,7 +124,7 @@ async def run(context: ResponseContext, request: str):
                 return
 
             await process.log(f"Data retrieval successful")
-            await process.log(f"Processing response and preparing artifact...")
+
             taxonomic_data = __extract_taxonomic_data(results)
 
             await process.create_artifact(

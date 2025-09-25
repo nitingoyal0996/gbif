@@ -152,13 +152,15 @@
                 "params": {
                     "scientificName": ["Panthera onca"],
                     "facet": ["basisOfRecord", "year"],
+                    "facetLimit": 20,
+                    "facetOffset": 0,
                     "limit": 0
                 },
                 "unresolved_params": null,
                 "clarification_needed": false,
                 "clarification_reason": null
             },
-            "reasoning": "Scientific name is exact, facet parameters are explicitly named, and this is clearly a count request (limit=0 for facets only). All requirements are met with no ambiguity."
+            "reasoning": "Scientific name is exact, facet parameters are explicitly named, and this is clearly a count request (limit=0 for facets only). All requirements are met with no ambiguity. And since facet search is paginated, I have added both facetLimit and facetOffset parameters."
         },
         {
             "request": "Break down records by observer in Costa Rica",
@@ -166,13 +168,15 @@
                 "params": {
                     "country": ["CR"],
                     "facet": ["recordedBy"],
+                    "facetLimit": 100,
+                    "facetOffset": 0,
                     "limit": 0
                 },
                 "unresolved_params": null,
                 "clarification_needed": false,
                 "clarification_reason": null
             },
-            "reasoning": "'Observer' clearly maps to 'recordedBy' field, 'Costa Rica' transforms to country code 'CR', and 'break down' indicates faceting. The mapping is deterministic."
+            "reasoning": "'Observer' clearly maps to 'recordedBy' field, 'Costa Rica' transforms to country code 'CR', and 'break down' indicates faceting. The mapping is deterministic. There can be thousands of observers, so both facetLimit and facetOffset parameters are added to paginate the results."
         }
     ],
     "find_species_records": [
@@ -296,7 +300,9 @@
                 "params": {
                     "facet": [
                         "kingdom"
-                    ]
+                    ],
+                    "facetLimit": 20,
+                    "facetOffset": 0
                 },
                 "clarification_needed": false,
                 "clarification_reason": null
@@ -307,7 +313,9 @@
             "request": "How many endangered species are there?",
             "response": {
                 "params": {
-                    "threat": "ENDANGERED"
+                    "threat": "ENDANGERED",
+                    "facetLimit": 20,
+                    "facetOffset": 0
                 },
                 "clarification_needed": false,
                 "clarification_reason": null

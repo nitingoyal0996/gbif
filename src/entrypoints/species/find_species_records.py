@@ -77,7 +77,6 @@ async def run(context: ResponseContext, request: str):
                 )
                 return
             await process.log(f"Data retrieval successful, status code {status_code}")
-            await process.log("Processing response and preparing artifact...")
 
             page_info = {
                 "count": raw_response.get("count"),

@@ -51,6 +51,7 @@ async def run(context: ResponseContext, request: str):
 
         params = response.params
         description = response.artifact_description
+
         await process.log(
             "Generated search parameters",
             data=params.model_dump(exclude_defaults=True),
@@ -101,9 +102,7 @@ async def run(context: ResponseContext, request: str):
                 "recordedBy": raw_response.get("recordedBy"),
                 "publishingCountry": raw_response.get("publishingCountry"),
             }
-            await process.log("Subset of response: ", data=subset_response)
-
-            await process.log("Processing response and preparing artifact...")
+            await process.log("Subset of response - ", data=subset_response)
 
             portal_url = api.build_portal_url(api_url)
 
