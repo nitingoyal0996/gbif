@@ -8,7 +8,7 @@
 
 The occurrence search functionality utilizes the `GET /v1/occurrence/search` endpoint. The system supports comprehensive filters available via GBIF API. API parameters are enabled via pydantic model [GBIFOccurrenceBaseParams](../src/models/entrypoints.py#L38).
 
-As of now, we do not have support for the following parameters: bed, biostratigraphy, checklistKey, coordinateUncertaintyInMeters, crawlId, degreeOfEstablishment, endDayOfYear, establishmentMeans, fieldNumber, formation, gadmGid, gadmLevel0Gid, gadmLevel1Gid, gadmLevel2Gid, gadmLevel3Gid, group, hostingOrganizationKey, institutionKey, isInCluster, iucnRedListCategory, latestAgeOrHighestStage, latestEonOrHighestEonothem, latestEpochOrHighestSeries, latestEraOrHighestErathem, latestPeriodOrHighestSystem, lowestBiostratigraphicZone, modified, organismId, organismQuantity, organismQuantityType, otherCatalogNumbers, parentEventId, pathway, programme, protocol, publishedByGbifRegion, recordedByID, relativeOrganismQuantity, repatriated, sampleSizeUnit, sampleSizeValue, samplingProtocol, startDayOfYear, taxonConceptId, taxonId, taxonomicIssue.
+As of now, we do not support for the following parameters: bed, biostratigraphy, checklistKey, coordinateUncertaintyInMeters, crawlId, degreeOfEstablishment, endDayOfYear, establishmentMeans, fieldNumber, formation, gadmGid, gadmLevel0Gid, gadmLevel1Gid, gadmLevel2Gid, gadmLevel3Gid, group, hostingOrganizationKey, institutionKey, isInCluster, iucnRedListCategory, latestAgeOrHighestStage, latestEonOrHighestEonothem, latestEpochOrHighestSeries, latestEraOrHighestErathem, latestPeriodOrHighestSystem, lowestBiostratigraphicZone, modified, organismId, organismQuantity, organismQuantityType, otherCatalogNumbers, parentEventId, pathway, programme, protocol, publishedByGbifRegion, recordedByID, relativeOrganismQuantity, repatriated, sampleSizeUnit, sampleSizeValue, samplingProtocol, startDayOfYear, taxonConceptId, taxonId, taxonomicIssue.
 
 **Example Query:** "Find records of birds in Gainesville, Florida, United States from 2014-2016"
 
@@ -44,7 +44,7 @@ The resolution process follows a systematic approach beginning with the extracti
 #### Use Case 2.2: Species Search
 
   \
-**Purpose:** Find species and taxonomic entities using flexible search criteria.
+**Purpose:** Discover species and taxonomic entities using species search
 
 Species discovery employs the `GET /v1/species/search` endpoint. This supports species search queries with filtering capabilities, returning paginated species results. 
 
