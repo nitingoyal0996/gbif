@@ -893,6 +893,13 @@ class GBIFSpeciesSearchParams(ProductionBaseModel):
         examples=[10, 20, 50, 100],
     )
 
+    page: Optional[int] = Field(
+        None,
+        ge=1,
+        description="Page number for pagination. Use with limit for pagination. For example, limit=20 and page=3 returns the third page of 20 results.",
+        examples=[1, 2, 3, 4, 5],
+    )
+
     offset: Optional[int] = Field(
         0,
         ge=0,
@@ -932,7 +939,7 @@ class GBIFSpeciesFacetsParams(GBIFSpeciesSearchParams):
     facetLimit: Optional[int] = Field(
         None,
         ge=1,
-        description="Maximum number of facet values to return per facet field. Use with facetOffset for paginating through large facet result sets.",
+        description="When we do not use this Maximum number of facet values to return per facet field. This should be set to maximum value",
         examples=[10, 50, 100],
     )
 
