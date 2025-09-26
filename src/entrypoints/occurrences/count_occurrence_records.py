@@ -1,7 +1,8 @@
 import uuid
-import openai
+import instructor
 import json
 
+from pydantic import BaseModel, Field
 from dataclasses import dataclass
 from typing import Optional
 from ichatbio.agent_response import ResponseContext, IChatBioAgentProcess
@@ -235,6 +236,13 @@ async def _generate_resolution_message(
     resolved_fields: dict,
     unresolved_fields: list,
 ) -> str:
+
+    class ResolutionMessage(BaseModel):
+        message: str = Field(
+            ...,
+            description="a brief message to clarify the search parameters",
+        )
+
     try:
         messages = [
             {
@@ -246,13 +254,16 @@ async def _generate_resolution_message(
                 "content": f"Generate the message for:\nUser request: {user_request}\nParsed Response: {json.dumps(serialize_for_log(response))}\nResolved fields: {resolved_fields}\nUnresolved fields: {unresolved_fields}.",
             },
         ]
-        client = openai.AsyncOpenAI()
-        response = await client.chat.completions.create(
-            model="gpt-4.1-nano",
-            messages=messages,
-            max_tokens=200,
+        client = instructor.from_provider(
+            "openai/gpt-4.1",
+            async_client=True,
         )
-        message_content = response.choices[0].message.content
+        response = await client.chat.completions.create(
+            messages=messages,
+            response_model=ResolutionMessage,
+            max_tokens=20,
+        )
+        message_content = response.message
         return message_content
 
     except Exception as e:
@@ -263,6 +274,12 @@ async def _generate_resolution_message(
 
 
 async def _generate_artifact_description(user_request: str, gbif_url: str) -> str:
+
+    class ArtifactDescription(BaseModel):
+        description: str = Field(
+            ..., description="A concise characterization of the query and data"
+        )
+
     try:
         messages = [
             {
@@ -274,13 +291,16 @@ async def _generate_artifact_description(user_request: str, gbif_url: str) -> st
                 "content": f"Generate description for: \nUser request: {user_request}\nGBIF API URL: {gbif_url}",
             },
         ]
-        client = openai.AsyncOpenAI()
-        response = await client.chat.completions.create(
+        client = instructor.from_provider(
             model="gpt-4.1-nano",
-            messages=messages,
-            max_tokens=200,
+            async_client=True,
         )
-        message_content = response.choices[0].message.content
+        response = await client.chat.completions.create(
+            messages=messages,
+            response_model=ArtifactDescription,
+            max_tokens=20,
+        )
+        message_content = response.description
         return message_content
     except Exception as e:
         logger.error(
