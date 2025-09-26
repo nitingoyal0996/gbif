@@ -255,7 +255,7 @@ async def _generate_resolution_message(
             },
         ]
         client = instructor.from_provider(
-            "openai/gpt-4.1",
+            "openai/gpt-4.1-nano",
             async_client=True,
         )
         response = await client.chat.completions.create(
@@ -292,7 +292,7 @@ async def _generate_artifact_description(user_request: str, gbif_url: str) -> st
             },
         ]
         client = instructor.from_provider(
-            model="gpt-4.1-nano",
+            model="openai/gpt-4.1-nano",
             async_client=True,
         )
         response = await client.chat.completions.create(
