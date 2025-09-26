@@ -259,7 +259,7 @@ async def _generate_resolution_message(
         response = await client.chat.completions.create(
             messages=messages,
             response_model=ResolutionMessage,
-            max_tokens=20,
+            max_tokens=100,
         )
         message_content = response.message
         return message_content
@@ -292,7 +292,7 @@ async def _generate_artifact_description(page_info: dict, portal_url: str) -> st
         response = await client.chat.completions.create(
             messages=messages,
             response_model=ArtifactDescription,
-            max_tokens=20,
+            max_tokens=100,
         )
         message_content = response.description
         return message_content
