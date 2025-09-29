@@ -275,18 +275,13 @@ async def _generate_resolution_message(
 async def _generate_artifact_description(page_info: dict, portal_url: str) -> str:
 
     class ArtifactDescription(BaseModel):
-        description = (
-            (
-                Optional[str],
-                Field(
-                    description="A concise characterization of the retrieved record statistics",
-                    examples=[
-                        "Per-country record counts for species Rattus rattus",
-                        "Per-species record counts for records created in 2025",
-                    ],
-                    default=None,
-                ),
-            ),
+        description: Optional[str] = Field(
+            description="A concise characterization of the retrieved record statistics",
+            examples=[
+                "Per-country record counts for species Rattus rattus",
+                "Per-species record counts for records created in 2025",
+            ],
+            default=None,
         )
 
     try:
