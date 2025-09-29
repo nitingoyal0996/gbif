@@ -16,7 +16,7 @@ CURRENT_DATE = datetime.datetime.now().strftime("%B %d, %Y")
 
 
 def create_response_model(parameter_model: Type[BaseModel]) -> Type[BaseModel]:
-    return create_model(
+    DynamicModel = create_model(
         "LLMResponse",
         params=(
             Optional[parameter_model],
@@ -59,6 +59,15 @@ def create_response_model(parameter_model: Type[BaseModel]) -> Type[BaseModel]:
         ),
         __base__=BaseModel,
     )
+
+    class LLMResponseWithValidation(DynamicModel):
+        def model_post_init(self, __context):
+            if not self.clarification_needed and self.artifact_description is None:
+                raise ValueError(
+                    "artifact_description must not be None if clarification_needed is False."
+                )
+
+    return LLMResponseWithValidation
 
 
 def get_system_prompt(entrypoint_id: str):
