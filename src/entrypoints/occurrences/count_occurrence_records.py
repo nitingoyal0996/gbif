@@ -125,14 +125,15 @@ async def run(context: ResponseContext, request: str):
                 request,
                 api_url,
             )
+            content_bytes = json.dumps(raw_response, indent=2).encode("utf-8")
             await process.create_artifact(
                 mimetype="application/json",
                 description=artifact_description,
                 uris=[api_url],
+                content=content_bytes,
                 metadata={
                     "portal_url": portal_url,
                     "data_source": "GBIF Occurrence",
-                    "api_response": raw_response,
                 },
             )
 
