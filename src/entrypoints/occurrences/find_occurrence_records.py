@@ -107,7 +107,7 @@ async def run(context: ResponseContext, request: str):
 
             portal_url = api.build_portal_url(api_url)
             artifact_description = await _generate_artifact_description(
-                page_info, portal_url
+                json.dumps(search_params.model_dump(exclude_none=True))
             )
             await process.create_artifact(
                 mimetype="application/json",
@@ -246,7 +246,7 @@ async def _generate_resolution_message(
         messages = [
             {
                 "role": "system",
-                "content": "You are a helpful assistant that crafts a brief message (don't make it an email) to clarify the search parameters. Include what were we able to resolve and what we still need to clarify.",
+                "content": "You are a helpful assistant that crafts a brief message (don't make it an email) to clarify the search parameters. Include what were you able to resolve and what you still need to clarify.",
             },
             {
                 "role": "user",
@@ -272,15 +272,12 @@ async def _generate_resolution_message(
         return "I encountered an error while trying to generate a message about the clarification required from the user about their search."
 
 
-async def _generate_artifact_description(page_info: dict, portal_url: str) -> str:
+async def _generate_artifact_description(search_parameters: str) -> str:
 
     class ArtifactDescription(BaseModel):
         description: Optional[str] = Field(
-            description="A concise characterization of the retrieved record statistics",
-            examples=[
-                "Per-country record counts for species Rattus rattus",
-                "Per-species record counts for records created in 2025",
-            ],
+            description="A concise characterization of the retrieved occurrence record data.",
+            examples=["occurrence records from Canada within classKey 212,"],
             default=None,
         )
 
@@ -290,6 +287,10 @@ async def _generate_artifact_description(page_info: dict, portal_url: str) -> st
                 "role": "system",
                 "content": "You are a helpful assistant that crafts a brief description of the artifact.",
             },
+            {
+                "role": "user",
+                "content": f"Generate description for request: \nSearch parameters: {search_parameters}",
+            },
         ]
         client = instructor.from_provider(
             model="openai/gpt-4.1-nano",
@@ -298,7 +299,7 @@ async def _generate_artifact_description(page_info: dict, portal_url: str) -> st
         response = await client.chat.completions.create(
             messages=messages,
             response_model=ArtifactDescription,
-            max_tokens=100,
+            max_tokens=50,
         )
         message_content = response.description
         return message_content
