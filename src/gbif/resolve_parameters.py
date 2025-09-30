@@ -1,5 +1,5 @@
 from src.gbif.api import GbifApi
-from src.gbif.fetch import execute_request
+from src.gbif.fetch import execute_request, execute_multiple_requests
 from ichatbio.agent_response import IChatBioAgentProcess
 
 """
@@ -264,3 +264,64 @@ async def resolve_names_to_taxonkeys(
         f"Resolved {len(taxon_keys)} out of {len(scientific_names)} names."
     )
     return taxon_keys
+
+
+async def resolve_keys_to_names(
+    api: GbifApi,
+    process: IChatBioAgentProcess,
+    keys: list,
+    type: str,
+) -> Dict[int, str]:
+    """
+    Resolve GBIF usage keys to scientific names using the species API.
+    """
+    if not keys:
+        return {}
+
+    unique_keys: list[int] = sorted({int(k) for k in keys if k is not None})
+    urls: Dict[str, str] = {
+        str(usage_key): api.build_species_key_search_url(usage_key)
+        for usage_key in unique_keys
+    }
+    await process.log(
+        "Resolving GBIF keys to scientific names",
+        data={"keys": unique_keys, "type": type},
+    )
+    results = await execute_multiple_requests(urls)
+    keys_to_name: Dict[int, str] = {}
+    for key_str, payload in results.items():
+        try:
+            if isinstance(payload, dict) and "error" not in payload:
+                scientific_name = payload.get("scientificName")
+                if not scientific_name:
+                    scientific_name = payload.get("canonicalName")
+                if scientific_name:
+                    keys_to_name[int(key_str)] = scientific_name
+                else:
+                    await process.log(
+                        f"No scientific name found for key {key_str}",
+                        data={"payload_keys": list(payload.keys())},
+                    )
+            else:
+                await process.log(
+                    f"Failed to fetch details for key {key_str}",
+                    data={
+                        "error": (
+                            payload.get("error")
+                            if isinstance(payload, dict)
+                            else str(payload)
+                        )
+                    },
+                )
+        except Exception as e:
+            await process.log(
+                f"Error processing species details for key {key_str}",
+                data={"error": str(e)},
+            )
+
+    await process.log(
+        "Resolved GBIF keys to names",
+        data={"resolved": len(keys_to_name), "requested": len(unique_keys)},
+    )
+
+    return keys_to_name

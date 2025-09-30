@@ -18,6 +18,8 @@ from src.gbif.parser import parse
 from src.gbif.resolve_parameters import (
     resolve_names_to_taxonkeys,
     resolve_pending_search_parameters,
+    resolvable_fields,
+    resolve_keys_to_names,
 )
 import dataclasses
 
@@ -102,6 +104,12 @@ async def run(context: ResponseContext, request: str):
                 )
                 return
             await process.log(f"Data retrieval successful, status code {status_code}")
+
+            await process.log("Resolving facet keys to scientific names if applicable")
+            facets = raw_response.get("facets", [])
+            enriched_facets = await _enrich_facets_with_names(api, process, facets)
+            raw_response["facets"] = enriched_facets
+
             page_info = {
                 "count": raw_response.get("count"),
                 "facetLimit": search_params.facetLimit,
@@ -124,6 +132,7 @@ async def run(context: ResponseContext, request: str):
                 metadata={
                     "portal_url": portal_url,
                     "data_source": "GBIF Occurrence",
+                    "api_response": raw_response,
                 },
             )
 
@@ -312,3 +321,49 @@ async def _generate_artifact_description(user_request: str, gbif_url: str) -> st
             f"LLM extraction failed, falling back to default description: {str(e)}"
         )
         return "I encountered an error while trying to generate a description of the artifact."
+
+
+async def _enrich_facets_with_names(
+    api: GbifApi, process: IChatBioAgentProcess, facets: list
+) -> list:
+    """
+    Enrich facet results by adding scientific names for taxonomic key facets.
+    """
+    taxonomic_facet_fields = {
+        "SPECIES_KEY",
+        "GENUS_KEY",
+        "FAMILY_KEY",
+        "ORDER_KEY",
+        "CLASS_KEY",
+        "PHYLUM_KEY",
+        "KINGDOM_KEY",
+        "TAXON_KEY",
+    }
+
+    enriched_facets = []
+
+    for facet in facets:
+        field = facet.get("field", "")
+        if field in taxonomic_facet_fields:
+            counts = facet.get("counts", [])
+            keys = [int(count.get("name")) for count in counts if count.get("name")]
+
+            if keys:
+                key_to_name = await resolve_keys_to_names(api, process, keys, field)
+                enriched_counts = []
+                for count in counts:
+                    key = count.get("name")
+                    if key and int(key) in key_to_name:
+                        enriched_count = count.copy()
+                        enriched_count["scientificName"] = key_to_name[int(key)]
+                        enriched_counts.append(enriched_count)
+                    else:
+                        enriched_counts.append(count)
+                enriched_facet = facet.copy()
+                enriched_facet["counts"] = enriched_counts
+                enriched_facets.append(enriched_facet)
+            else:
+                enriched_facets.append(facet)
+        else:
+            enriched_facets.append(facet)
+    return enriched_facets

@@ -70,11 +70,15 @@ class GbifApi:
         query_string = urlencode(api_params, doseq=True)
         return f"{self.base_url}/species/search?{query_string}"
 
+    def build_species_key_search_url(self, usage_key: int) -> str:
+        base_url = f"{self.base_url}/species/{usage_key}"
+        return base_url
+
     def build_species_taxonomic_urls(
         self, params: GBIFSpeciesTaxonomicParams
     ) -> Dict[str, str]:
         usage_key = params.key
-        base_url = f"{self.base_url}/species/{usage_key}"
+        base_url = self.build_species_key_search_url(usage_key)
         urls = {
             "basic": f"{base_url}",
             "parsed_name": f"{base_url}/name",
@@ -106,7 +110,6 @@ class GbifApi:
         api_params = self._convert_to_api_params(params)
         query_string = urlencode(api_params, doseq=True)
         return f"{self.base_url}/dataset/search?{query_string}"
-
 
     def build_portal_url(self, api_url: str) -> str:
         portal_url = self.portal_url
