@@ -1,8 +1,6 @@
 import uuid
-import instructor
 import json
 
-from pydantic import BaseModel, Field
 from dataclasses import dataclass
 from typing import Optional
 from ichatbio.agent_response import ResponseContext, IChatBioAgentProcess
@@ -13,12 +11,16 @@ from src.gbif.fetch import execute_request
 from src.models.entrypoints import GBIFOccurrenceFacetsParams
 from src.models.validators import OccurrenceFacetsParamsValidator
 from src.log import with_logging, logger
-
+from src.utils import (
+    _expand_user_request,
+    _generate_artifact_description,
+    _generate_resolution_message,
+    serialize_for_log,
+)
 from src.gbif.parser import parse
 from src.gbif.resolve_parameters import (
     resolve_names_to_taxonkeys,
     resolve_pending_search_parameters,
-    resolvable_fields,
     resolve_keys_to_names,
 )
 import dataclasses
@@ -42,17 +44,6 @@ entrypoint = AgentEntrypoint(
 )
 
 
-def serialize_for_log(obj):
-    # Pydantic v2
-    if hasattr(obj, "model_dump"):
-        return obj.model_dump(exclude_defaults=True)
-    # Dataclass
-    if dataclasses.is_dataclass(obj):
-        return dataclasses.asdict(obj)
-    # Fallback
-    return str(obj)
-
-
 @dataclass
 class ParameterResolutionResult:
     search_params: Optional[GBIFOccurrenceFacetsParams]
@@ -72,8 +63,14 @@ async def run(context: ResponseContext, request: str):
         logger.info(f"Agent log ID: {AGENT_LOG_ID}")
         await process.log(f"Request recieved: {request} \n\nParsing request...")
 
+        expansion_response = await _expand_user_request(request)
+        await process.log(
+            f"Expanded request", data=expansion_response.model_dump(exclude_none=True)
+        )
+        request = expansion_response.expanded_request
+
         response = await parse(request, entrypoint.id, OccurrenceFacetsParamsValidator)
-        logger.info(f"Parsed Response: {response}")
+        process.log(f"Parsed Response: {response.model_dump(exclude_none=True)}")
         api = GbifApi()
 
         param_result = await _get_parameters(response, request, api, process)
@@ -128,7 +125,6 @@ async def run(context: ResponseContext, request: str):
             await process.create_artifact(
                 mimetype="application/json",
                 description=artifact_description,
-                uris=[api_url],
                 content=content_bytes,
                 metadata={
                     "portal_url": portal_url,
@@ -237,91 +233,6 @@ async def _get_parameters(
         clarification_needed=clarification_needed,
         clarification_message=clarification_message,
     )
-
-
-async def _generate_resolution_message(
-    user_request: str,
-    response: OccurrenceFacetsParamsValidator,
-    resolved_fields: dict,
-    unresolved_fields: list,
-) -> str:
-
-    class ResolutionMessage(BaseModel):
-        message: str = Field(
-            ...,
-            description="a brief message to clarify the search parameters",
-        )
-
-    try:
-        messages = [
-            {
-                "role": "system",
-                "content": "You are a helpful assistant that crafts a brief message (don't make it an email) to clarify the search parameters. Include what were you able to resolve and what you still need to clarify.",
-            },
-            {
-                "role": "user",
-                "content": f"Generate the message for:\nUser request: {user_request}\nParsed Response: {json.dumps(serialize_for_log(response))}\nResolved fields: {resolved_fields}\nUnresolved fields: {unresolved_fields}.",
-            },
-        ]
-        client = instructor.from_provider(
-            "openai/gpt-4.1-nano",
-            async_client=True,
-        )
-        response = await client.chat.completions.create(
-            messages=messages,
-            response_model=ResolutionMessage,
-            max_tokens=100,
-        )
-        message_content = response.message
-        return message_content
-
-    except Exception as e:
-        logger.error(
-            f"LLM extraction failed, falling back to default message: {str(e)}"
-        )
-        return "I encountered an error while trying to generate a message about the clarification required from the user about their search."
-
-
-async def _generate_artifact_description(search_parameters: str) -> str:
-
-    class ArtifactDescription(BaseModel):
-        description: Optional[str] = Field(
-            description="A concise characterization of the retrieved record statistics.",
-            examples=[
-                "Per-country record counts for species Rattus rattus",
-                "Per-species record counts for records created in 2025",
-            ],
-            default=None,
-        )
-
-    try:
-        messages = [
-            {
-                "role": "system",
-                "content": "You are a helpful assistant that crafts a brief yet meaningful description of the artifact based on request parameters.",
-            },
-            {
-                "role": "user",
-                "content": f"Generate description for request: \nParameters: {search_parameters}",
-            },
-        ]
-        client = instructor.from_provider(
-            model="openai/gpt-4.1-nano",
-            async_client=True,
-        )
-        response = await client.chat.completions.create(
-            messages=messages,
-            response_model=ArtifactDescription,
-            max_tokens=50,
-        )
-        message_content = response.description
-        return message_content
-    except Exception as e:
-        logger.error(
-            f"LLM extraction failed, falling back to default description: {str(e)}"
-        )
-        return "I encountered an error while trying to generate a description of the artifact."
-
 
 async def _enrich_facets_with_names(
     api: GbifApi, process: IChatBioAgentProcess, facets: list
