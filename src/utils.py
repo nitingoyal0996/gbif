@@ -105,95 +105,114 @@ async def _generate_artifact_description(search_parameters: str) -> str:
         return "I encountered an error while trying to generate a description of the artifact."
 
 
-async def _expand_user_request(user_request: str):
+async def _identify_organisms(user_request: str):
     """
     Translates organism-related terms in user request to scientific nomenclature.
     """
 
-    class CommonToScientificTranslation(BaseModel):
-        common_name: str = Field(
-            description="The common name to translate",
+    class IdentifiedOrganism(BaseModel):
+        term_found: str = Field(
+            description="The exact organism term as found in the user request (e.g., 'birds', 'monkey', 'Cercopithecidae')",
+        )
+        is_already_scientific: bool = Field(
+            description="True if the term is already in scientific nomenclature, False if it's a common name",
         )
         scientific_name: str = Field(
-            description="The scientific name to translate to",
+            description="The scientific name (same as term_found if already scientific, or the translation if common name)",
+        )
+        taxonomic_rank: str = Field(
+            description="The taxonomic rank of the scientific name (e.g., 'species', 'genus', 'family', 'order', 'class')",
         )
 
     class UserRequestExpansion(BaseModel):
-        identified_terms: list[str] = Field(
-            description="All organism-related terms (common names, informal names, taxonomic groups) found in the original request",
+        reasoning: str = Field(
+            description="Step-by-step thought process: What organism terms did you find? Which are common names vs scientific? What translations are needed?",
+        )
+        organisms: list[IdentifiedOrganism] = Field(
+            description="All organism terms found with their scientific names and taxonomic ranks",
             default_factory=list,
         )
-        taxonomic_translation: list[CommonToScientificTranslation] = Field(
-            description="Mapping of identified terms to their scientific names. Example: [{'common_name': 'brown rat', 'scientific_name': 'Rattus norvegicus'}]",
-            default_factory=list,
-        )
-        expanded_request: str = Field(
-            description="The user request rewritten with scientific names replacing common names, maintaining the original request structure and intent",
-        )
-        uncertain_terms: Optional[list[str]] = Field(
-            description="Terms that could not be confidently translated or are ambiguous (e.g., 'fish' could be multiple taxa)",
-            default=None,
-        )
-
-        # @model_validator(mode="after")
-        # def validate_translations_in_request(self):
-        #     """Ensure all translations made it into the expanded request and common names exist in original request"""
-        #     expanded_lower = self.expanded_request.lower()
-        #     for translation in self.taxonomic_translation:
-        #         if translation.common_name.lower() not in self.expanded_request.lower():
-        #             raise ValueError(
-        #                 f"Common name '{translation.common_name}' was translated but not found in original request"
-        #             )
-        #         if translation.scientific_name.lower() not in expanded_lower:
-        #             raise ValueError(
-        #                 f"Scientific name '{translation.scientific_name}' was translated but not found in expanded_request"
-        #             )
-        #     return self
 
     system_prompt = """
 You are a taxonomic expert. Your task is to translate organism-related terms in user requests to proper scientific nomenclature.
 
-## MANDATORY Process - Follow Every Step:
+## MANDATORY Process:
 
-**Step 1: Identify organism names**
-Find organism references. Extract the core name as it appears in the request.
-- If user provides scientific names (e.g., "monkeys (Cercopithecidae)"), recognize these are already scientific
-- If user wrote "bird species", identify "bird"
+**Step 1: Reasoning (document your thought process)**
+In the `reasoning` field, work through these questions:
+- What organism-related terms appear in the request?
+- Which terms are already scientific names vs common names?
+- For common names, what are the appropriate scientific names and ranks?
+- For scientific names already present, what are their taxonomic ranks?
+- Are there any ambiguous terms?
 
-**Step 2: Build translation dictionary**
-For EACH common name from Step 1:
-- If the user ALREADY provided the scientific name (in parentheses, after "family:", etc.), DO NOT translate
-- Only translate if it's PURELY a common name with no scientific equivalent given
-- Scientific names should be single taxa, not combinations with "OR", "AND", etc.
-
-**CRITICAL CHECK**: Did you find any common names WITHOUT scientific equivalents provided?
-- YES → `taxonomic_translation` MUST have entries
-- NO → `taxonomic_translation` is empty []
+**Step 2: Extract taxonomy information**
+For EACH organism term you identified:
+- Record the `term_found` exactly as it appears in the request
+- Set `is_already_scientific` to True or False
+- If False (common name): provide translated `scientific_name` and `taxonomic_rank`
+- If True (already scientific): provide the same `scientific_name` (= term_found) and determine its `taxonomic_rank`
 
 **Step 3: Rewrite request**
-Remove common names if scientific equivalents were provided. Keep logical operators (OR, AND) intact.
+Replace common names with scientific names. Keep scientific names as-is. Preserve all logical operators (OR, AND) and other request structure.
+
+## Guidelines:
+- Extract only the organism name itself (e.g., "bird" not "bird species")
+- Scientific names should be single taxa, not combinations with "OR", "AND"
+- Choose appropriate taxonomic rank:
+  - Specific animals/plants → species or genus (e.g., "brown rat" → "Rattus norvegicus", species)
+  - General groups → family, order, or class (e.g., "beetles" → "Coleoptera", order)
+- If term has scientific name in parentheses like "birds (Aves)", recognize Aves is already provided
+- ALWAYS provide both scientific_name and taxonomic_rank for every term
 
 ## Examples:
 
 Input: "Count beetle species in Brazil"
-Step 1: Found "beetle" (no scientific name provided)
-Step 2: [{'common_name': 'beetle', 'scientific_name': 'Coleoptera'}]
-Step 3: "Count Coleoptera species in Brazil"
+Output:
+- reasoning: "Found 'beetle' as an organism term. It's a common name for the order Coleoptera. No scientific names were provided."
+- taxonomy: [{'term_found': 'beetle', 'is_already_scientific': False, 'scientific_name': 'Coleoptera', 'taxonomic_rank': 'order'}]
 
 Input: "Find monkeys (family:Cercopithecidae OR Hylobatidae) in India"
-Step 1: Found "monkeys" but user provided scientific names already
-Step 2: []  # No translation needed, scientific names already there
-Step 3: "Find Cercopithecidae OR Hylobatidae in India"
+Output:
+- reasoning: "Found 'monkeys' as common name, but user already provided the scientific families Cercopithecidae and Hylobatidae. Also found these two family names explicitly. The families are already in scientific nomenclature."
+- taxonomy: [
+    {'term_found': 'monkeys', 'is_already_scientific': False, 'scientific_name': 'Primates', 'taxonomic_rank': 'order'},
+    {'term_found': 'Cercopithecidae', 'is_already_scientific': True, 'scientific_name': 'Cercopithecidae', 'taxonomic_rank': 'family'},
+    {'term_found': 'Hylobatidae', 'is_already_scientific': True, 'scientific_name': 'Hylobatidae', 'taxonomic_rank': 'family'}
+  ]
 
 Input: "Track deer and wolves"
-Step 1: Found "deer" and "wolves" (no scientific names provided)
-Step 2: [{'common_name': 'deer', 'scientific_name': 'Cervidae'}, {'common_name': 'wolves', 'scientific_name': 'Canis lupus'}]
-Step 3: "Track Cervidae and Canis lupus"
+Output:
+- reasoning: "Found two organism terms: 'deer' and 'wolves'. Both are common names. 'Deer' refers to family Cervidae. 'Wolves' is the common name for species Canis lupus."
+- taxonomy: [
+    {'term_found': 'deer', 'is_already_scientific': False, 'scientific_name': 'Cervidae', 'taxonomic_rank': 'family'},
+    {'term_found': 'wolves', 'is_already_scientific': False, 'scientific_name': 'Canis lupus', 'taxonomic_rank': 'species'}
+  ]
 
 Input: "Show bears (Ursidae) and cats"
-Step 1: Found "bears" (has Ursidae), "cats" (no scientific name)
-Step 2: [{'common_name': 'cats', 'scientific_name': 'Felidae'}]
-Step 3: "Show Ursidae and Felidae"
+Output:
+- reasoning: "Found 'bears' with Ursidae in parentheses - the scientific name is already provided. Found 'cats' as a common name without scientific equivalent, which refers to family Felidae. Also explicitly found 'Ursidae' which is a family."
+- taxonomy: [
+    {'term_found': 'bears', 'is_already_scientific': False, 'scientific_name': 'Ursidae', 'taxonomic_rank': 'family'},
+    {'term_found': 'Ursidae', 'is_already_scientific': True, 'scientific_name': 'Ursidae', 'taxonomic_rank': 'family'},
+    {'term_found': 'cats', 'is_already_scientific': False, 'scientific_name': 'Felidae', 'taxonomic_rank': 'family'}
+  ]
+
+Input: "Find Pinus sylvestris and oak trees in Europe"
+Output:
+- reasoning: "Found 'Pinus sylvestris' which is already a scientific binomial name (species). Found 'oak trees' where 'oak' is a common name for genus Quercus."
+- taxonomy: [
+    {'term_found': 'Pinus sylvestris', 'is_already_scientific': True, 'scientific_name': 'Pinus sylvestris', 'taxonomic_rank': 'species'},
+    {'term_found': 'oak', 'is_already_scientific': False, 'scientific_name': 'Quercus', 'taxonomic_rank': 'genus'}
+  ]
+
+Input: "Show birds and Mammalia in Australia"
+Output:
+- reasoning: "Found 'birds' as a common name for class Aves. Found 'Mammalia' which is already the scientific name for the mammal class."
+- taxonomy: [
+    {'term_found': 'birds', 'is_already_scientific': False, 'scientific_name': 'Aves', 'taxonomic_rank': 'class'},
+    {'term_found': 'Mammalia', 'is_already_scientific': True, 'scientific_name': 'Mammalia', 'taxonomic_rank': 'class'}
+  ]
 """
 
     messages = [

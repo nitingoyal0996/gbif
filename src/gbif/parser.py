@@ -18,6 +18,12 @@ CURRENT_DATE = datetime.datetime.now().strftime("%B %d, %Y")
 def create_response_model(parameter_model: Type[BaseModel]) -> Type[BaseModel]:
     DynamicModel = create_model(
         "LLMResponse",
+        plan=(
+            str,
+            Field(
+                description="A brief explanation of what API parameters you plan to use. Or, if you are unable to fulfill the user's request using the available API parameters, provide a brief explanation for why you cannot retrieve the requested records."
+            ),
+        ),
         params=(
             Optional[parameter_model],
             Field(
@@ -35,10 +41,9 @@ def create_response_model(parameter_model: Type[BaseModel]) -> Type[BaseModel]:
         artifact_description=(
             Optional[str],
             Field(
-                description="A concise characterization of the retrieved record statistics",
+                description="A concise characterization of the retrieved records.",
                 examples=[
                     "Per-country record counts for species Rattus rattus",
-                    "Per-species record counts for records created in 2025",
                 ],
                 default=None,
             ),
@@ -93,12 +98,28 @@ def get_system_prompt(entrypoint_id: str):
     return prompt
 
 
+def format_organisms_parsing_response(identified_organisms_response: Type[BaseModel]):
+    organisms_list = [
+        org.model_dump() for org in identified_organisms_response.organisms
+    ]
+    message = f"""
+    Reasoning: {identified_organisms_response.reasoning}
+
+    ```json
+    Organisms Identified: {json.dumps(organisms_list, indent=2)}
+    ```
+    """
+
+    return message
+
+
 # For validation errors - shorter delays
 @retry(wait=wait_exponential(multiplier=1, min=1, max=10), stop=stop_after_attempt(3))
 async def parse(
     request: str,
     entrypoint_id: str,
     parameters_model: Type[BaseModel],
+    identified_organisms_response: Optional[Type[BaseModel]],
 ) -> Type[BaseModel]:
     response_model = create_response_model(parameters_model)
 
@@ -111,12 +132,23 @@ async def parse(
         {
             "role": "system",
             "content": get_system_prompt(entrypoint_id),
-        },
+        }
+    ]
+    if identified_organisms_response:
+        messages.append(
+            {
+                "role": "assistant",
+                "content": format_organisms_parsing_response(
+                    identified_organisms_response
+                ),
+            }
+        )
+    messages.append(
         {
             "role": "user",
             "content": f"Generate GBIF Request Parameters for the following user request: {request}",
-        },
-    ]
+        }
+    )
 
     instructor_validation_context = {"user_request": request}
 
@@ -132,6 +164,6 @@ async def parse(
         print(f"Failed after {e.n_attempts} attempts")
         print(f"Exception details: {e}")
     except Exception as e:
-            print(f"Exception details: {e}")
+        print(f"Exception details: {e}")
 
     return response
