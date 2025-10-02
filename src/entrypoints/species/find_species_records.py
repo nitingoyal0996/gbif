@@ -8,6 +8,7 @@ from src.gbif.fetch import execute_request
 from src.models.validators import SpeciesSearchParamsValidator
 from src.log import with_logging, logger
 from src.gbif.parser import parse
+from src.utils import _identify_organisms
 
 
 description = """
@@ -42,18 +43,28 @@ async def run(context: ResponseContext, request: str):
         logger.info(f"Agent log ID: {AGENT_LOG_ID}")
         await process.log(f"Request received: {request} \n\nParsing request...")
 
-        response = await parse(request, entrypoint.id, SpeciesSearchParamsValidator)
+        expansion_response = await _identify_organisms(request)
+        await process.log(
+            f"Expanded request", data=expansion_response.model_dump(exclude_none=True)
+        )
+
+        response = await parse(
+            request, entrypoint.id, SpeciesSearchParamsValidator, expansion_response
+        )
+        await process.log(f"Parameter parsing plan", data={"plan": response.plan})
         if response.clarification_needed:
-            await process.log(f"Clarification needed: {response.clarification_reason}")
+            await process.log(
+                f"Clarification needed",
+                data={"clarification_reason": response.clarification_reason},
+            )
             await context.reply(f"{response.clarification_reason}")
             return
-        logger.info(f"LLM Parsed Response: {response}")
         params = response.params
         description = response.artifact_description
 
         await process.log(
-            "Generated search parameters",
-            data=params.model_dump(exclude_defaults=True),
+            f"Final Search Parameters",
+            data=params.model_dump(exclude_none=True),
         )
 
         api = GbifApi()

@@ -79,16 +79,16 @@ class FacetValidationMixin:
         invalid = [f for f in v if f not in allowed]
 
         invalid_special = [
-            f for f in v if f in {"scientificName", "geoDistance", "geometry"}
+            f for f in v if f in {"q", "scientificName", "geoDistance", "geometry"}
         ]
         if invalid_special:
             raise ValueError(
-                f"Fields are not valid facets for GBIF API: {invalid_special}. You should remove these field(s) from facet parameter values and use different fields if available."
+                f"Fields are not valid facets for GBIF API: {invalid_special}. You should remove these field(s) from facet parameter values and use different fields if available. Choose from the valid facets fields: {sorted(allowed)}"
             )
 
         if invalid:
             raise ValueError(
-                f"The value(s) {invalid} for field 'facet' are not valid facets."
+                f"The value(s) {invalid} for field 'facet' are not valid facets. Choose from the valid facets fields: {sorted(allowed)}"
             )
         return v
 
@@ -141,7 +141,7 @@ class SpeciesSearchParamsValidator(RequestValidationMixin, GBIFSpeciesSearchPara
 
 
 class SpeciesFacetsParamsValidator(
-    SpeciesSearchParamsValidator, GBIFSpeciesFacetsParams
+    SpeciesSearchParamsValidator, FacetValidationMixin, GBIFSpeciesFacetsParams
 ):
     pass
 

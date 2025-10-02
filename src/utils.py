@@ -126,12 +126,26 @@ async def _identify_organisms(user_request: str):
 
     class UserRequestExpansion(BaseModel):
         reasoning: str = Field(
-            description="Step-by-step thought process: What organism terms did you find? Which are common names vs scientific? What translations are needed?",
+            description="Briefly describe the thought process: What organism terms did you find? Which are common names vs scientific? What translations are needed?",
         )
         organisms: list[IdentifiedOrganism] = Field(
             description="All organism terms found with their scientific names and taxonomic ranks",
             default_factory=list,
         )
+
+        @model_validator(mode="after")
+        def validate_unique_scientific_names(self):
+            organisms = self.organisms
+            seen = set()
+            for org in organisms:
+                sci_name = org.scientific_name
+                if sci_name:
+                    if sci_name.lower() in seen:
+                        raise ValueError(
+                            f"Duplicate scientific_name found in organisms: '{sci_name}'. Each scientific_name must be unique."
+                        )
+                    seen.add(sci_name.lower())
+            return self
 
     system_prompt = """
 You are a taxonomic expert. Your task is to translate organism-related terms in user requests to proper scientific nomenclature.
@@ -164,6 +178,7 @@ Replace common names with scientific names. Keep scientific names as-is. Preserv
   - General groups → family, order, or class (e.g., "beetles" → "Coleoptera", order)
 - If term has scientific name in parentheses like "birds (Aves)", recognize Aves is already provided
 - ALWAYS provide both scientific_name and taxonomic_rank for every term
+- You must not repeat records with the same scientific name
 
 ## Examples:
 

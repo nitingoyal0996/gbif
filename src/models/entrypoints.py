@@ -911,12 +911,6 @@ class GBIFSpeciesSearchParams(ProductionBaseModel):
         ],
     )
 
-    hl: Optional[bool] = Field(
-        None,
-        description="Enable search term highlighting in results. When set to true, matching terms in fulltext search fields will be wrapped in emphasis tags with class 'gbifHl' for visual highlighting.",
-        examples=[True, False],
-    )
-
     # Pagination parameters
     limit: Optional[int] = Field(
         20,
@@ -981,6 +975,11 @@ class GBIFSpeciesFacetsParams(GBIFSpeciesSearchParams):
         ge=0,
         description="Starting offset for facet value results. Use with facetLimit for paginating through facet values when there are many distinct values.",
         examples=[0, 50, 100],
+    )
+
+    # Override limit default for faceting (0 for facets only)
+    limit: Optional[int] = Field(
+        0, ge=0, le=300, description="Number of results per page (0 for facets only)"
     )
 
 

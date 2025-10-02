@@ -12,7 +12,7 @@ from src.models.entrypoints import GBIFOccurrenceFacetsParams
 from src.models.validators import OccurrenceFacetsParamsValidator
 from src.log import with_logging, logger
 from src.utils import (
-    _expand_user_request,
+    _identify_organisms,
     _generate_artifact_description,
     _generate_resolution_message,
     serialize_for_log,
@@ -63,20 +63,23 @@ async def run(context: ResponseContext, request: str):
         logger.info(f"Agent log ID: {AGENT_LOG_ID}")
         await process.log(f"Request recieved: {request} \n\nParsing request...")
 
-        expansion_response = await _expand_user_request(request)
+        expansion_response = await _identify_organisms(request)
         await process.log(
             f"Expanded request", data=expansion_response.model_dump(exclude_none=True)
         )
-        request = expansion_response.expanded_request
 
-        response = await parse(request, entrypoint.id, OccurrenceFacetsParamsValidator)
-        process.log(f"Parsed Response: {response.model_dump(exclude_none=True)}")
+        response = await parse(
+            request, entrypoint.id, OccurrenceFacetsParamsValidator, expansion_response
+        )
+
+        await process.log(f"Parameter parsing plan", data={"plan": response.plan})
         api = GbifApi()
 
         param_result = await _get_parameters(response, request, api, process)
 
         await process.log(
-            f"Search API parameters results -", data=serialize_for_log(param_result)
+            f"Search API parameters results -",
+            data=param_result.model_dump(exclude_none=True),
         )
 
         if param_result.clarification_needed:

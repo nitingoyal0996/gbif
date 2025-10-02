@@ -21,7 +21,7 @@ def create_response_model(parameter_model: Type[BaseModel]) -> Type[BaseModel]:
         plan=(
             str,
             Field(
-                description="A brief explanation of what API parameters you plan to use. Or, if you are unable to fulfill the user's request using the available API parameters, provide a brief explanation for why you cannot retrieve the requested records."
+                description="A brief explanation of what API parameters you plan to use. Or, if you are unable to fulfill the user's request using the available API parameters, provide a brief explanation for why you cannot retrieve the requested records. You can use the closest matching parameters available in the api parameter_model (params) to the user's request and explain why you used them."
             ),
         ),
         params=(
@@ -119,7 +119,7 @@ async def parse(
     request: str,
     entrypoint_id: str,
     parameters_model: Type[BaseModel],
-    identified_organisms_response: Optional[Type[BaseModel]],
+    identified_organisms_response: Optional[Type[BaseModel]] = None,
 ) -> Type[BaseModel]:
     response_model = create_response_model(parameters_model)
 

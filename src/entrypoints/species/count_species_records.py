@@ -6,8 +6,9 @@ from ichatbio.types import AgentEntrypoint
 from src.gbif.api import GbifApi
 from src.gbif.fetch import execute_request
 from src.models.validators import SpeciesFacetsParamsValidator
-from src.log import with_logging, logger
+from src.log import with_logging
 from src.gbif.parser import parse
+from src.utils import _identify_organisms
 
 description = """
 **Use Case:** Use this entrypoint to get statistical counts and summaries of species themselves, based on criteria like taxonomic rank, conservation status, or habitat.
@@ -36,25 +37,34 @@ async def run(context: ResponseContext, request: str):
     Executes the species counting entrypoint. Counts species name usage records using the provided
     parameters and creates an artifact with the faceted statistical results.
     """
-    async with context.begin_process("Requesting GBIF statistics") as process:
+    async with context.begin_process("Requesting GBIF Species statistics") as process:
         AGENT_LOG_ID = f"COUNT_SPECIES_RECORDS_{str(uuid.uuid4())[:6]}"
+        await process.log(f"Request received: {request} \n\nParsing request...")
+
+        expansion_response = await _identify_organisms(request)
         await process.log(
-            f"Request received: {request} \n\nGenerating iChatBio for GBIF request parameters..."
+            f"Expanded request", data=expansion_response.model_dump(exclude_none=True)
         )
 
-        response = await parse(request, entrypoint.id, SpeciesFacetsParamsValidator)
+        response = await parse(
+            request, entrypoint.id, SpeciesFacetsParamsValidator, expansion_response
+        )
+        await process.log(f"Parameter parsing plan", data={"plan": response.plan})
         if response.clarification_needed:
-            await process.log(f"Clarification needed: {response.clarification_reason}")
+            await process.log(
+                f"Clarification needed",
+                data={"clarification_reason": response.clarification_reason},
+            )
             await context.reply(f"{response.clarification_reason}")
             return
-        logger.info(f"LLM Parsed Response: {response}")
+
+        await process.log(
+            f"Final Search Parameters",
+            data=response.params.model_dump(exclude_none=True),
+        )
         params = response.params
         description = response.artifact_description
 
-        await process.log(
-            "Generated search and facet parameters: ",
-            data=params.model_dump(exclude_defaults=True),
-        )
         api = GbifApi()
         api_url = api.build_species_facets_url(params)
         await process.log(f"Generated API URL: {api_url}")
