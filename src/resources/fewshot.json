@@ -177,6 +177,24 @@
                 "clarification_reason": null
             },
             "reasoning": "'Observer' clearly maps to 'recordedBy' field, 'Costa Rica' transforms to country code 'CR', and 'break down' indicates faceting. The mapping is deterministic. There can be thousands of observers, so both facetLimit and facetOffset parameters are added to paginate the results."
+        },
+        {
+            "request": "How many Panthera onca records are there in Tanzania?",
+            "response": {
+                "params": {
+                    "scientificName": [
+                        "Panthera onca"
+                    ],
+                    "country": [
+                        "TZ"
+                    ],
+                    "limit": 0
+                },
+                "unresolved_params": null,
+                "clarification_needed": false,
+                "clarification_reason": null
+            },
+            "reasoning": "User wants a simple total count without any breakdown or faceting. The request asks 'how many' without specifying 'by country' or 'by year', so facet parameter is omitted. This will return just the total count."
         }
     ],
     "find_species_records": [
@@ -315,12 +333,40 @@
                 "params": {
                     "threat": "ENDANGERED",
                     "facetLimit": 20,
-                    "facetOffset": 0
+                    "facetOffset": 0,
+                    "limit": 0
                 },
                 "clarification_needed": false,
                 "clarification_reason": null
             },
             "reasoning": "The user wants a count of species with threat status 'ENDANGERED'. This maps directly to the 'threat' parameter."
+        },
+        {
+            "request": "Count the number of species with the genus Rattus?",
+            "response": {
+                "q": "Rattus",
+                "qField": "scientificName",
+                "rank": "GENUS",
+                "facetLimit": 20,
+                "facetOffset": 0,
+                "limit": 0
+            },
+            "reasoning": "The user wants to count the number of species with the genus Rattus. I have added the scientific name 'Rattus' to the `q` field and the rank 'GENUS' to the `rank` field. Since it is a count request, I have also added the `limit`=0."
+        },
+        {
+            "request": "Count the number of Rattus species and group them by rank and threat status",
+            "response": {
+                "q": "Rattus",
+                "qField": "scientificName",
+                "facet": [
+                    "rank",
+                    "threat"
+                ],
+                "facetLimit": 20,
+                "facetOffset": 0,
+                "limit": 0
+            },
+            "reasoning": "The user wants to count the number of species with the genus Rattus and group them by rank and threat status. I have added the scientific name 'Rattus' to the `q` field. To group the counts I used the `facet` field. Since it is a count request with facets, I have added the `facetLimit`, `facetOffset` along with `limit`=0 field."
         }
     ]
 }

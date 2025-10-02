@@ -79,7 +79,7 @@ async def run(context: ResponseContext, request: str):
 
         await process.log(
             f"Search API parameters results -",
-            data=param_result.model_dump(exclude_none=True),
+            data=serialize_for_log(param_result),
         )
 
         if param_result.clarification_needed:
