@@ -71,6 +71,10 @@ class FacetValidationMixin:
     @field_validator("facet", check_fields=False)
     @classmethod
     def validate_facet_names(cls, v):
+        # Allow None - facets are optional for simple count queries
+        if v is None:
+            return v
+
         allowed = cls.allowed_facet_fields()
         invalid = [f for f in v if f not in allowed]
 

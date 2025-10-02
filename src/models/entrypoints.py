@@ -727,9 +727,9 @@ class GBIFOccurrenceFacetsParams(GBIFOccurrenceBaseParams):
     """Parameters for GBIF occurrence faceting - extends search params with faceting options"""
 
     # Faceting parameters
-    facet: List[str] = Field(
-        ...,
-        description="A facet name used to retrieve the most frequent values for a field. Facets are allowed for all search parameters except geometry and geoDistance. This parameter may be repeated to request multiple facets. Note terms not available for searching are not available for faceting.",
+    facet: Optional[List[str]] = Field(
+        default=None,
+        description="A facet name used to retrieve the most frequent values for a field. Facets are allowed for all search parameters except geometry and geoDistance. This parameter may be repeated to request multiple facets. Note terms not available for searching are not available for faceting. If omitted, only the total count is returned without breakdowns.",
         examples=[
             ["scientificName"],
             ["country", "year"],
@@ -745,7 +745,7 @@ class GBIFOccurrenceFacetsParams(GBIFOccurrenceBaseParams):
         description="Used in combination with the facet parameter. Set facetLimit={#} to limit the number of facets returned.",
         examples=[10, 20, 50],
     )
-    
+
     facetOffset: Optional[int] = Field(
         0,
         ge=0,
