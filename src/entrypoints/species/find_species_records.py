@@ -1,4 +1,5 @@
 import uuid
+import json
 
 from ichatbio.agent_response import ResponseContext
 from ichatbio.types import AgentEntrypoint
@@ -8,7 +9,7 @@ from src.gbif.fetch import execute_request
 from src.models.validators import SpeciesSearchParamsValidator
 from src.log import with_logging, logger
 from src.gbif.parser import parse
-from src.utils import _identify_organisms
+from src.utils import _identify_organisms, serialize_organisms
 
 
 description = """
@@ -44,12 +45,22 @@ async def run(context: ResponseContext, request: str):
         await process.log(f"Request received: {request} \n\nParsing request...")
 
         expansion_response = await _identify_organisms(request)
+        expandedRequest = f"User request: {request} Identified organisms in the request: {json.dumps(serialize_organisms(expansion_response.organisms))}"
         await process.log(
-            f"Expanded request", data=expansion_response.model_dump(exclude_none=True)
+            f"Expanded request",
+            data={
+                "original_request": request,
+                "identified_organisms": serialize_organisms(
+                    expansion_response.organisms
+                ),
+            },
         )
 
         response = await parse(
-            request, entrypoint.id, SpeciesSearchParamsValidator, expansion_response
+            expandedRequest,
+            entrypoint.id,
+            SpeciesSearchParamsValidator,
+            expansion_response,
         )
         await process.log(f"Parameter parsing plan", data={"plan": response.plan})
         if response.clarification_needed:
