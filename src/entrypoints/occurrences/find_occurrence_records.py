@@ -14,6 +14,7 @@ from src.utils import (
     _generate_artifact_description,
     _generate_resolution_message,
     _identify_organisms,
+    serialize_organisms,
 )
 from src.gbif.parser import parse
 from src.gbif.resolve_parameters import (
@@ -64,17 +65,27 @@ async def run(context: ResponseContext, request: str):
         await process.log(f"Request recieved: {request} \n\nParsing request...")
 
         expansion_response = await _identify_organisms(request)
+        expandedRequest = f"User request: {request} Identified organisms in the request: {json.dumps(serialize_organisms(expansion_response.organisms))}"
         await process.log(
-            f"Expanded request", data=expansion_response.model_dump(exclude_none=True)
+            f"Expanded request",
+            data={
+                "original_request": request,
+                "identified_organisms": serialize_organisms(
+                    expansion_response.organisms
+                ),
+            },
         )
 
         response = await parse(
-            request, entrypoint.id, OccurrenceSearchParamsValidator, expansion_response
+            expandedRequest,
+            entrypoint.id,
+            OccurrenceSearchParamsValidator,
+            expansion_response,
         )
         await process.log(f"Parameter parsing plan", data={"plan": response.plan})
         api = GbifApi()
 
-        param_result = await _get_parameters(response, request, api, process)
+        param_result = await _get_parameters(response, expandedRequest, api, process)
 
         if param_result.clarification_needed:
             await context.reply(param_result.clarification_message)
@@ -117,7 +128,7 @@ async def run(context: ResponseContext, request: str):
 
             portal_url = api.build_portal_url(api_url)
             artifact_description = await _generate_artifact_description(
-                json.dumps(search_params.model_dump(exclude_none=True))
+                f"User request: {request} Identified organisms in the request: {json.dumps(serialize_organisms(expansion_response.organisms))}, Search parameters: {json.dumps(search_params.model_dump(exclude_none=True))}, URL: {api_url}",
             )
             await process.create_artifact(
                 mimetype="application/json",
