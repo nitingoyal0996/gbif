@@ -63,13 +63,15 @@ async def _generate_resolution_message(
         return "I encountered an error while trying to generate a message about the clarification required from the user about their search."
 
 
-async def _generate_artifact_description(search_parameters: str) -> str:
+async def _generate_artifact_description(details: str) -> str:
 
     class ArtifactDescription(BaseModel):
         description: Optional[str] = Field(
             description="A concise characterization of the retrieved record statistics.",
             examples=[
-                "Per-country record counts for species Rattus rattus",
+                "Occurrence records for species Rattus rattus across multiple countries.",
+                "Species-level record counts for observations created in 2025.",
+                "Occurrence data for Psittacidae in Alaska, United States.",
                 "Per-species record counts for records created in 2025",
             ],
             default=None,
@@ -79,11 +81,19 @@ async def _generate_artifact_description(search_parameters: str) -> str:
         messages = [
             {
                 "role": "system",
-                "content": "You are a helpful assistant that crafts a brief yet meaningful description of the artifact based on request parameters. It should be a complete sentence.",
+                "content": (
+                    "You are a helpful assistant that summarizes GBIF API search parameters "
+                    "into a short, meaningful English description. "
+                    "Your output must be a single complete sentence summarizing the type of data retrieved. "
+                    "Identify what kind of records (e.g., occurrence records, species counts), "
+                    "and mention geographic or taxonomic filters when present. "
+                    "Avoid repeating raw parameter names or producing fragments like 'per-country' "
+                    "unless multiple countries are explicitly listed."
+                ),
             },
             {
                 "role": "user",
-                "content": f"Generate description for request: \nParameters: {search_parameters}",
+                "content": f"Generate a clear, natural-language description for this GBIF API request: \nDetails: {details}",
             },
         ]
         client = instructor.from_provider(
@@ -93,7 +103,7 @@ async def _generate_artifact_description(search_parameters: str) -> str:
         response = await client.chat.completions.create(
             messages=messages,
             response_model=ArtifactDescription,
-            max_tokens=50,
+            max_tokens=60,
             temperature=0.2,
         )
         message_content = response.description
@@ -103,6 +113,10 @@ async def _generate_artifact_description(search_parameters: str) -> str:
             f"LLM extraction failed, falling back to default description: {str(e)}"
         )
         return "I encountered an error while trying to generate a description of the artifact."
+
+
+def serialize_organisms(organisms: list) -> list:
+    return {org.scientific_name: org.taxonomic_rank for org in organisms}
 
 
 async def _identify_organisms(user_request: str):
@@ -247,4 +261,5 @@ Output:
         max_retries=2,
     )
 
+    logger.info(f"Identified organisms: {response.model_dump(exclude_none=True)}")
     return response
