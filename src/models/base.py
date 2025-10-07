@@ -6,7 +6,7 @@ from pydantic import (
 
 
 class ProductionBaseModel(BaseModel):
-    """A base model with production-ready settings."""
+    """Base model with production-ready settings for all GBIF models (immutable, strict validation)."""
 
     model_config = ConfigDict(
         frozen=True,  # Models are immutable

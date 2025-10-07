@@ -16,7 +16,7 @@ from src.enums.species import (
 
 
 class SearchFilters(ProductionBaseModel):
-    """Core search and query filters for species searches."""
+    """Full-text search filters for species (q parameter for broad search, qField to narrow to specific fields)."""
 
     q: Optional[str] = Field(
         None,
@@ -40,7 +40,7 @@ class SearchFilters(ProductionBaseModel):
 
 
 class DatasetFilters(ProductionBaseModel):
-    """Dataset and checklist filters for species searches."""
+    """Filters for limiting species searches to specific datasets or checklists."""
 
     datasetKey: Optional[str] = Field(
         None,
@@ -56,7 +56,7 @@ class DatasetFilters(ProductionBaseModel):
 
 
 class TaxonomicFilters(ProductionBaseModel):
-    """Taxonomic rank and classification filters for species searches."""
+    """Filters for species by taxonomic rank, higher taxon, or taxonomic status."""
 
     rank: Optional[TaxonomicRankEnum] = Field(
         None,
@@ -78,7 +78,7 @@ class TaxonomicFilters(ProductionBaseModel):
 
 
 class NameFilters(ProductionBaseModel):
-    """Name type and nomenclatural status filters for species searches."""
+    """Filters for species by name type, nomenclatural status, and origin."""
 
     nameType: Optional[NameTypeEnum] = Field(
         None,
@@ -105,7 +105,7 @@ class NameFilters(ProductionBaseModel):
 
 
 class EcologyFilters(ProductionBaseModel):
-    """Ecological and conservation filters for species searches."""
+    """Filters for species by extinction status, habitat, and conservation threat status."""
 
     isExtinct: Optional[bool] = Field(
         None,
@@ -130,7 +130,7 @@ class EcologyFilters(ProductionBaseModel):
 
 
 class QualityFilters(ProductionBaseModel):
-    """Data quality and indexing issue filters for species searches."""
+    """Filters for species by data quality issues identified during GBIF indexing."""
 
     issue: Optional[IssueEnum] = Field(
         None,

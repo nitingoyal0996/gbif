@@ -4,11 +4,7 @@ from typing import Optional, List
 from .base import ProductionBaseModel
 
 class PaginationParams(ProductionBaseModel):
-    """
-    Unified pagination parameters for all search results.
-
-    Supports both offset-based and page-based pagination.
-    """
+    """Pagination controls for search results (limit, offset, or page-based navigation)."""
 
     limit: Optional[int] = Field(
         20,
@@ -32,12 +28,7 @@ class PaginationParams(ProductionBaseModel):
 
 
 class FacetParams(ProductionBaseModel):
-    """
-    Unified faceting parameters for all search results.
-
-    Used for retrieving frequency counts and statistical analysis across both
-    occurrence and species searches.
-    """
+    """Faceting parameters for retrieving frequency counts and statistical breakdowns of search results."""
 
     facet: Optional[List[str]] = Field(
         default=None,
