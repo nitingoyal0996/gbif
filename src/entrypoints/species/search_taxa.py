@@ -4,7 +4,7 @@ from ichatbio.types import AgentEntrypoint
 from src.gbif.api import GbifApi
 from src.gbif.fetch import execute_request, execute_multiple_requests
 from src.models.entrypoints import GBIFSpeciesSearchParams, GBIFSpeciesTaxonomicParams
-from src.models.enums.species_parameters import (
+from src.enums.species import (
     TaxonomicStatusEnum,
     TaxonomicRankEnum,
     QueryFieldEnum,
