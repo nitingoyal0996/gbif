@@ -15,13 +15,13 @@ from src.utils import (
     _generate_resolution_message,
     _identify_organisms,
     serialize_organisms,
+    serialize_for_log,
 )
 from src.gbif.parser import parse
 from src.gbif.resolve_parameters import (
     resolve_names_to_taxonkeys,
     resolve_pending_search_parameters,
 )
-import dataclasses
 
 
 description = """
@@ -39,17 +39,6 @@ entrypoint = AgentEntrypoint(
     description=description,
     parameters=None,
 )
-
-
-def serialize_for_log(obj):
-    # Pydantic v2
-    if hasattr(obj, "model_dump"):
-        return obj.model_dump(exclude_defaults=True)
-    # Dataclass
-    if dataclasses.is_dataclass(obj):
-        return dataclasses.asdict(obj)
-    # Fallback
-    return str(obj)
 
 
 @with_logging("find_occurrence_records")
@@ -95,7 +84,7 @@ async def run(context: ResponseContext, request: str):
 
         await process.log(
             f"Final Search API parameters",
-            data=search_params.model_dump(exclude_none=True),
+            data=serialize_for_log(search_params),
         )
 
         api_url = api.build_occurrence_search_url(search_params)
@@ -128,7 +117,7 @@ async def run(context: ResponseContext, request: str):
 
             portal_url = api.build_portal_url(api_url)
             artifact_description = await _generate_artifact_description(
-                f"User request: {request} Identified organisms in the request: {json.dumps(serialize_organisms(expansion_response.organisms))}, Search parameters: {json.dumps(search_params.model_dump(exclude_none=True))}, URL: {api_url}",
+                f"User request: {request} Identified organisms in the request: {json.dumps(serialize_organisms(expansion_response.organisms))}, Search parameters: {json.dumps(serialize_for_log(search_params))}, URL: {api_url}",
             )
             await process.create_artifact(
                 mimetype="application/json",

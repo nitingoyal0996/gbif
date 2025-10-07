@@ -24,7 +24,6 @@ from src.gbif.resolve_parameters import (
     resolve_pending_search_parameters,
     resolve_keys_to_names,
 )
-import dataclasses
 
 
 description = """
@@ -133,7 +132,7 @@ async def run(context: ResponseContext, request: str):
             portal_url = api.build_portal_url(api_url)
 
             artifact_description = await _generate_artifact_description(
-                f"User request: {request} Identified organisms in the request: {json.dumps(serialize_organisms(expansion_response.organisms))}, Search parameters: {json.dumps(search_params.model_dump(exclude_none=True))}, URL: {api_url}",
+                f"User request: {request} Identified organisms in the request: {json.dumps(serialize_organisms(expansion_response.organisms))}, Search parameters: {json.dumps(serialize_for_log(search_params))}, URL: {api_url}",
             )
             content_bytes = json.dumps(raw_response, indent=2).encode("utf-8")
             await process.create_artifact(
