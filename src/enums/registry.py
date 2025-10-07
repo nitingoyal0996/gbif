@@ -49,23 +49,3 @@ class EndpointTypeEnum(Enum):
     ACEF = "ACEF"
     TEXT_TREE = "TEXT_TREE"
     OTHER = "OTHER"
-
-
-class ContinentEnum(Enum):
-    """Continent enumeration based on 7 continent model"""
-    AFRICA = "AFRICA"
-    ANTARCTICA = "ANTARCTICA"
-    ASIA = "ASIA"
-    OCEANIA = "OCEANIA"
-    EUROPE = "EUROPE"
-    NORTH_AMERICA = "NORTH_AMERICA"
-    SOUTH_AMERICA = "SOUTH_AMERICA"
-
-
-class LicenseEnum(Enum):
-    """License enumeration"""
-    CC0_1_0 = "CC0_1_0"
-    CC_BY_4_0 = "CC_BY_4_0"
-    CC_BY_NC_4_0 = "CC_BY_NC_4_0"
-    UNSPECIFIED = "UNSPECIFIED"
-    UNSUPPORTED = "UNSUPPORTED"

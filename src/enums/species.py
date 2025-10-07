@@ -132,13 +132,6 @@ class ThreatStatusEnum(str, Enum):
     NOT_EVALUATED = "NOT_EVALUATED"
 
 
-class MediaTypeEnum(str, Enum):
-    StillImage = "StillImage"
-    MovingImage = "MovingImage"
-    Sound = "Sound"
-    InteractiveResource = "InteractiveResource"
-
-
 class HabitatEnum(str, Enum):
     MARINE = "MARINE"
     FRESHWATER = "FRESHWATER"
