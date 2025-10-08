@@ -2,7 +2,7 @@ from pydantic import Field
 from typing import List, Optional
 from uuid import UUID
 
-from .base import ProductionBaseModel
+from .base import BaseModel
 from src.enums.common import (
     ContinentEnum,
     LicenseEnum,
@@ -18,7 +18,8 @@ from src.enums.species import (
     TypeStatusEnum,
 )
 
-class TaxonomicFilters(ProductionBaseModel):
+
+class TaxonomicFilters(BaseModel):
     """Filters for occurrences by taxonomic classification (scientific name, taxonKey, or specific rank keys)."""
 
     scientificName: Optional[List[str]] = Field(
@@ -120,7 +121,41 @@ class TaxonomicFilters(ProductionBaseModel):
     )
 
 
-class GeographicFilters(ProductionBaseModel):
+class GadmFilters(BaseModel):
+    """Filters for occurrences by GADM geographic identifier."""
+
+    gadmGid: Optional[List[str]] = Field(
+        None,
+        description="A GADM geographic identifier at any level, for example AGO, AGO.1_1, AGO.1.1_1 or AGO.1.1.1_1. Parameter may be repeated.",
+        examples=[["AGO.1_1"]],
+    )
+
+    gadmLevel0Gid: Optional[List[str]] = Field(
+        None,
+        description="A GADM geographic identifier at the zero level, for example AGO. Parameter may be repeated.",
+        examples=[["AGO"]],
+    )
+
+    gadmLevel1Gid: Optional[List[str]] = Field(
+        None,
+        description="A GADM geographic identifier at the first level, for e``xample AGO.1_1. Parameter may be repeated.",
+        examples=[["AGO.1_1"]],
+    )
+
+    gadmLevel2Gid: Optional[List[str]] = Field(
+        None,
+        description="A GADM geographic identifier at the second level, for example AFG.1.1_1. Parameter may be repeated.",
+        examples=[["AFG.1.1_1"]],
+    )
+
+    gadmLevel3Gid: Optional[List[str]] = Field(
+        None,
+        description="A GADM geographic identifier at the third level, for example AFG.1.1.1_1. Parameter may be repeated.",
+        examples=[["AFG.1.1.1_1"]],
+    )
+
+
+class GeographicFilters(GadmFilters):
     """Filters for occurrences by geographic location (country, coordinates, geometry, water bodies, etc.)."""
 
     continent: Optional[List[ContinentEnum]] = Field(
@@ -250,38 +285,8 @@ class GeographicFilters(ProductionBaseModel):
         ],
     )
 
-    gadmGid: Optional[List[str]] = Field(
-        None,
-        description="A GADM geographic identifier at any level, for example AGO, AGO.1_1, AGO.1.1_1 or AGO.1.1.1_1. Parameter may be repeated.",
-        examples=[["AGO.1_1"]],
-    )
 
-    gadmLevel0Gid: Optional[List[str]] = Field(
-        None,
-        description="A GADM geographic identifier at the zero level, for example AGO. Parameter may be repeated.",
-        examples=[["AGO"]],
-    )
-
-    gadmLevel1Gid: Optional[List[str]] = Field(
-        None,
-        description="A GADM geographic identifier at the first level, for example AGO.1_1. Parameter may be repeated.",
-        examples=[["AGO.1_1"]],
-    )
-
-    gadmLevel2Gid: Optional[List[str]] = Field(
-        None,
-        description="A GADM geographic identifier at the second level, for example AFG.1.1_1. Parameter may be repeated.",
-        examples=[["AFG.1.1_1"]],
-    )
-
-    gadmLevel3Gid: Optional[List[str]] = Field(
-        None,
-        description="A GADM geographic identifier at the third level, for example AFG.1.1.1_1. Parameter may be repeated.",
-        examples=[["AFG.1.1.1_1"]],
-    )
-
-
-class TemporalFilters(ProductionBaseModel):
+class TemporalFilters(BaseModel):
     """Filters for occurrences by date/time (year, month, eventDate, lastInterpreted, etc.)."""
 
     year: Optional[str] = Field(
@@ -349,7 +354,7 @@ class TemporalFilters(ProductionBaseModel):
     )
 
 
-class RecordIdentifiers(ProductionBaseModel):
+class RecordIdentifiers(BaseModel):
     """Filters for occurrences by record identifiers (gbifId, occurrenceId, catalogNumber, recordNumber, etc.)."""
 
     occurrenceId: Optional[List[str]] = Field(
@@ -389,7 +394,7 @@ class RecordIdentifiers(ProductionBaseModel):
     )
 
 
-class DatasetCollectionFilters(ProductionBaseModel):
+class DatasetCollectionFilters(BaseModel):
     """Filters for occurrences by dataset, institution, collection, or publishing organization."""
 
     datasetKey: Optional[List[UUID]] = Field(
@@ -486,7 +491,7 @@ class DatasetCollectionFilters(ProductionBaseModel):
     )
 
 
-class OrganismSpecimenFilters(ProductionBaseModel):
+class OrganismSpecimenFilters(BaseModel):
     """Filters for occurrences by organism/specimen characteristics (basisOfRecord, sex, lifeStage, typeStatus, etc.)."""
 
     basisOfRecord: Optional[List[BasisOfRecordEnum]] = Field(
@@ -582,7 +587,7 @@ class OrganismSpecimenFilters(ProductionBaseModel):
     )
 
 
-class MediaSequenceFilters(ProductionBaseModel):
+class MediaSequenceFilters(BaseModel):
     """Filters for occurrences by associated media (images, videos) and genetic sequences."""
 
     mediaType: Optional[List[MediaObjectTypeEnum]] = Field(
@@ -608,7 +613,7 @@ class MediaSequenceFilters(ProductionBaseModel):
     )
 
 
-class IdentificationFilters(ProductionBaseModel):
+class IdentificationFilters(BaseModel):
     """Filters for occurrences by who identified or recorded them (identifiedBy, recordedBy, and their IDs)."""
 
     identifiedBy: Optional[List[str]] = Field(
@@ -636,7 +641,7 @@ class IdentificationFilters(ProductionBaseModel):
     )
 
 
-class GeologicalFilters(ProductionBaseModel):
+class GeologicalFilters(BaseModel):
     """Filters for occurrences by geological time periods and stratigraphic information (eons, eras, periods, etc.)."""
 
     earliestEonOrLowestEonothem: Optional[List[str]] = Field(
@@ -736,7 +741,7 @@ class GeologicalFilters(ProductionBaseModel):
     )
 
 
-class InvasiveSpeciesFilters(ProductionBaseModel):
+class InvasiveSpeciesFilters(BaseModel):
     """Filters for occurrences by invasive species information (establishment means, degree of establishment, pathway)."""
 
     degreeOfEstablishment: Optional[List[str]] = Field(
@@ -758,7 +763,7 @@ class InvasiveSpeciesFilters(ProductionBaseModel):
     )
 
 
-class ConservationFilters(ProductionBaseModel):
+class ConservationFilters(BaseModel):
     """Filters for occurrences by IUCN Red List conservation category."""
 
     iucnRedListCategory: Optional[List[str]] = Field(
@@ -768,7 +773,7 @@ class ConservationFilters(ProductionBaseModel):
     )
 
 
-class QualityFilters(ProductionBaseModel):
+class QualityFilters(BaseModel):
     """Filters for occurrences by data quality issues, clustering, or repatriation status."""
 
     issue: Optional[List[str]] = Field(
@@ -796,7 +801,7 @@ class QualityFilters(ProductionBaseModel):
     )
 
 
-class ProjectProgrammeFilters(ProductionBaseModel):
+class ProjectProgrammeFilters(BaseModel):
     """Filters for occurrences by associated projects or programmes (e.g., GBIF BID programme)."""
 
     programme: Optional[List[str]] = Field(
@@ -812,12 +817,12 @@ class ProjectProgrammeFilters(ProductionBaseModel):
     )
 
 
-class SearchFilters(ProductionBaseModel):
+class SearchFilters(BaseModel):
     """Filters for occurrences by full-text search (q parameter), license, or Darwin Core extensions."""
 
     q: Optional[str] = Field(
         None,
-        description="Simple full-text search parameter. The value for this parameter can be a simple word or a phrase. Wildcards are not supported",
+        description="Simple full-text search parameter. The value for this parameter can be a simple word or a phrase. Wildcards are not supported. This parameter can search for text fields such as locality, description, name etc.. please use it wisely. If any of the locations is not resolved into a gadm_id, you may use parameter like `q` or `locality`.",
         examples=["mammal", "Quercus robur"],
     )
 
@@ -837,7 +842,7 @@ class SearchFilters(ProductionBaseModel):
     )
 
 
-class ExperimentalFilters(ProductionBaseModel):
+class ExperimentalFilters(BaseModel):
     """Experimental filters for occurrences (case-sensitive search, random shuffling, highlighting)."""
 
     matchCase: Optional[bool] = Field(
@@ -859,7 +864,7 @@ class ExperimentalFilters(ProductionBaseModel):
     )
 
 
-class HighLevelSearchFilters(ProductionBaseModel):
+class HighLevelSearchFilters(BaseModel):
     """High-level composite filters for occurrences by geological time, lithostratigraphy, or biostratigraphy."""
 
     geologicalTime: Optional[str] = Field(
