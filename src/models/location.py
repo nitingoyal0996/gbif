@@ -1,0 +1,201 @@
+from typing import Optional, List, Tuple, Dict
+from pydantic import BaseModel, Field
+
+
+class Location(BaseModel):
+    """
+    Hierarchical geographic address.
+
+    Used by:
+    - LLM to extract locations from user requests
+    - GADM module to resolve locations to GADM IDs
+    - GBIF API to filter by geographic location
+
+    Examples:
+        Location(country="USA", state="Florida", county="Alachua")
+        Location(country="India", state="Karnataka")
+        Location(country="USA", state="California", locality="San Francisco")
+    """
+
+    continent: Optional[str] = Field(
+        None, description="Continent name (e.g., 'North America', 'Asia', 'Europe')"
+    )
+    country: Optional[str] = Field(
+        None, description="Country name (e.g., 'United States', 'India', 'Brazil')"
+    )
+    country_iso: Optional[str] = Field(
+        None, description="ISO 3166-1 alpha-2 country code (e.g., 'US', 'IN', 'BR')"
+    )
+    state: Optional[str] = Field(
+        None,
+        description="State/province name (e.g., 'California', 'Karnataka', 'Ontario')",
+    )
+    state_iso: Optional[str] = Field(
+        None, description="State/province code if applicable (e.g., 'CA', 'FL', 'NY')"
+    )
+    county: Optional[str] = Field(
+        None, description="County/district name (e.g., 'Alachua', 'Pauri', 'King')"
+    )
+    locality: Optional[str] = Field(
+        None,
+        description="City/town/locality name (e.g., 'Gainesville', 'Mumbai', 'Montreal')",
+    )
+    protected_area: Optional[str] = Field(
+        None,
+        description="Protected area name (e.g., 'Yellowstone', 'Kruger', 'Serengeti')",
+    )
+
+    # ========================================================================
+    # PROPERTIES - Used by GADM resolution
+    # ========================================================================
+
+    @property
+    def most_specific(self) -> Tuple[Optional[str], Optional[str]]:
+        """
+        Return (level, name) of most specific location.
+
+        Returns:
+            Tuple of (level_name, place_name) or (None, None) if empty
+
+        Example:
+            >>> loc = Location(country="USA", state="Florida", county="Alachua")
+            >>> loc.most_specific
+            ('county', 'Alachua')
+        """
+        if self.locality:
+            return ("locality", self.locality)
+        if self.county:
+            return ("county", self.county)
+        if self.protected_area:
+            return ("protected_area", self.protected_area)
+        if self.state:
+            return ("state", self.state)
+        if self.country:
+            return ("country", self.country)
+        if self.continent:
+            return ("continent", self.continent)
+        return (None, None)
+
+    @property
+    def hierarchy_list(self) -> List[Tuple[str, str]]:
+        """
+        Return list of (level, name) from least to most specific.
+
+        Returns:
+            List of tuples: [(level_name, place_name), ...]
+
+        Example:
+            >>> loc = Location(country="USA", state="Florida", county="Alachua")
+            >>> loc.hierarchy_list
+            [('country', 'USA'), ('state', 'Florida'), ('county', 'Alachua')]
+        """
+        result = []
+        if self.continent:
+            result.append(("continent", self.continent))
+        if self.country:
+            result.append(("country", self.country))
+        if self.state:
+            result.append(("state", self.state))
+        if self.county:
+            result.append(("county", self.county))
+        if self.locality:
+            result.append(("locality", self.locality))
+        if self.protected_area:
+            result.append(("protected_area", self.protected_area))
+        return result
+
+    def get_hierarchy(self) -> List[Tuple[int, str, str]]:
+        """
+        Get location hierarchy as list of (gadm_level, level_name, place_name).
+
+        Used by GADM resolution module.
+
+        Returns:
+            List from most specific to least specific:
+            [(3, 'locality', 'Gainesville'), (1, 'state', 'Florida'), (0, 'country', 'USA')]
+
+        Example:
+            >>> loc = Location(country="USA", state="Florida", locality="Gainesville")
+            >>> loc.get_hierarchy()
+            [(3, 'locality', 'Gainesville'), (1, 'state', 'Florida'), (0, 'country', 'USA')]
+        """
+        hierarchy = []
+
+        # Map location fields to GADM levels
+        # GADM levels: 0=country, 1=state/province, 2=county/district, 3=locality
+
+        if self.locality:
+            hierarchy.append((3, "locality", self.locality))
+
+        if self.county:
+            hierarchy.append((2, "county", self.county))
+
+        if self.protected_area:
+            hierarchy.append((2, "protected_area", self.protected_area))
+
+        if self.state:
+            hierarchy.append((1, "state", self.state))
+
+        if self.country:
+            hierarchy.append((0, "country", self.country))
+
+        return hierarchy
+
+    def get_parent_constraints(self, for_level: int) -> Dict[int, str]:
+        """
+        Get parent location names for disambiguating at a given level.
+
+        Used by GADM resolution to constrain searches.
+
+        Args:
+            for_level: GADM level to get parents for
+
+        Returns:
+            Dict mapping parent levels to names
+
+        Example:
+            >>> loc = Location(country="USA", state="Florida", county="Alachua")
+            >>> loc.get_parent_constraints(for_level=2)
+            {1: 'Florida', 0: 'USA'}
+
+            This means: when searching for county (level 2), constrain by
+            state=Florida (level 1) and country=USA (level 0)
+        """
+        constraints = {}
+        hierarchy = self.get_hierarchy()
+
+        for level, _, name in hierarchy:
+            if level < for_level:  # Only include parents (lower levels)
+                constraints[level] = name
+
+        return constraints
+
+    def is_empty(self) -> bool:
+        """Check if location has any data"""
+        return not any(
+            [
+                self.continent,
+                self.country,
+                self.state,
+                self.county,
+                self.locality,
+                self.protected_area,
+            ]
+        )
+
+    def __str__(self) -> str:
+        """Human-readable string representation"""
+        parts = []
+        if self.locality:
+            parts.append(self.locality)
+        if self.county:
+            parts.append(self.county)
+        if self.protected_area:
+            parts.append(self.protected_area)
+        if self.state:
+            parts.append(self.state)
+        if self.country:
+            parts.append(self.country)
+        if self.continent:
+            parts.append(self.continent)
+        return ", ".join(parts) if parts else "Empty Location"
