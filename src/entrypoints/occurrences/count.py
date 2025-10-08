@@ -12,7 +12,7 @@ from src.models.entrypoints import GBIFOccurrenceFacetsParams
 from src.models.validators import OccurrenceFacetsParamsValidator
 from src.log import with_logging, logger
 from src.utils import (
-    _identify_organisms,
+    _preprocess_user_request,
     _generate_artifact_description,
     _generate_resolution_message,
     serialize_organisms,
@@ -63,7 +63,7 @@ async def run(context: ResponseContext, request: str):
         logger.info(f"Agent log ID: {AGENT_LOG_ID}")
         await process.log(f"Request recieved: {request} \n\nParsing request...")
 
-        expansion_response = await _identify_organisms(request)
+        expansion_response = await _preprocess_user_request(request)
         expandedRequest = f"User request: {request} Identified organisms in the request: {json.dumps(serialize_organisms(expansion_response.organisms))}"
         await process.log(
             f"Expanded request",

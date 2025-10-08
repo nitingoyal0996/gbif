@@ -13,7 +13,7 @@ from src.log import with_logging, logger
 from src.utils import (
     _generate_artifact_description,
     _generate_resolution_message,
-    _identify_organisms,
+    _preprocess_user_request,
     serialize_organisms,
     serialize_for_log,
 )
@@ -53,7 +53,7 @@ async def run(context: ResponseContext, request: str):
         logger.info(f"Agent log ID: {AGENT_LOG_ID}")
         await process.log(f"Request recieved: {request} \n\nParsing request...")
 
-        expansion_response = await _identify_organisms(request)
+        expansion_response = await _preprocess_user_request(request)
         expandedRequest = f"User request: {request} Identified organisms in the request: {json.dumps(serialize_organisms(expansion_response.organisms))}"
         await process.log(
             f"Expanded request",
@@ -178,7 +178,6 @@ async def _get_parameters(
     clarification_message = None
     clarification_needed = response.clarification_needed
 
-    # Collect all updates first, then do a single copy operation
     params_updates = {}
 
     if response.clarification_needed:

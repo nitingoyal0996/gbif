@@ -9,7 +9,7 @@ from src.gbif.fetch import execute_request
 from src.models.validators import SpeciesFacetsParamsValidator
 from src.log import with_logging
 from src.gbif.parser import parse
-from src.utils import _identify_organisms, serialize_organisms
+from src.utils import _preprocess_user_request, serialize_organisms
 
 description = """
 **Use Case:** Use this entrypoint to get statistical counts and summaries of species themselves, based on criteria like taxonomic rank, conservation status, or habitat.
@@ -42,7 +42,7 @@ async def run(context: ResponseContext, request: str):
         AGENT_LOG_ID = f"COUNT_SPECIES_RECORDS_{str(uuid.uuid4())[:6]}"
         await process.log(f"Request received: {request} \n\nParsing request...")
 
-        expansion_response = await _identify_organisms(request)
+        expansion_response = await _preprocess_user_request(request)
         expandedRequest = f"User request: {request} Identified organisms in the request: {json.dumps(serialize_organisms(expansion_response.organisms))}"
         await process.log(
             f"Expanded request",

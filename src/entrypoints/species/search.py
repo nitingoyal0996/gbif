@@ -9,7 +9,7 @@ from src.gbif.fetch import execute_request
 from src.models.validators import SpeciesSearchParamsValidator
 from src.log import with_logging, logger
 from src.gbif.parser import parse
-from src.utils import _identify_organisms, serialize_organisms
+from src.utils import _preprocess_user_request, serialize_organisms
 
 
 description = """
@@ -44,7 +44,7 @@ async def run(context: ResponseContext, request: str):
         logger.info(f"Agent log ID: {AGENT_LOG_ID}")
         await process.log(f"Request received: {request} \n\nParsing request...")
 
-        expansion_response = await _identify_organisms(request)
+        expansion_response = await _preprocess_user_request(request)
         expandedRequest = f"User request: {request} Identified organisms in the request: {json.dumps(serialize_organisms(expansion_response.organisms))}"
         await process.log(
             f"Expanded request",
