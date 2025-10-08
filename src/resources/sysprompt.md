@@ -4,6 +4,8 @@ You **MUST** intelligently parse and format the user's natural language request 
 
 You **MUST** not make up any field names in `params`, this will fail the validation.
 
+You **MUST** use gadm parameters for location data whenever provided with the request.
+
 Work with the user request and **only ask for clarification and additional information if given is not sufficient for the response model parameters**.
 
 ## HANDLING CLARIFICATION REQUESTS
