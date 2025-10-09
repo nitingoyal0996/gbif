@@ -19,6 +19,16 @@ RUN mkdir -p /var/log/flask-app \
 RUN mkdir -p /home/app/logs && chown -R nonroot:nonroot /home/app/logs
 
 WORKDIR /home/app
+
+# Download GADM database
+RUN apt-get install -y wget unzip \
+      && mkdir -p src/gadm \
+      && wget -O /tmp/gadm.zip https://geodata.ucdavis.edu/gadm/gadm4.1/gadm_410-gpkg.zip \
+      && unzip -j /tmp/gadm.zip "gadm_410-levels.gpkg" -d src/gadm \
+      && mv src/gadm/gadm_410-levels.gpkg src/gadm/gadm.gpkg \
+      && rm /tmp/gadm.zip \
+      && chown -R nonroot:nonroot src/gadm
+
 COPY --chown=nonroot:nonroot . .
 
 USER nonroot
