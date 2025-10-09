@@ -1,50 +1,22 @@
-"""
-GADM Geographic Address Resolution
-
-Resolves hierarchical location addresses to GADM IDs for precise geographic filtering.
-
-Example:
-    location = Location(
-        country="USA",
-        state="Florida",
-        county="Alachua"
-    )
-
-    gadm_id = resolve_to_gadm(location)
-    # Returns: "USA.11.1_1" (Alachua County, Florida)
-"""
-
 import os
 import sqlite3
-from typing import List, Optional, Tuple, Dict
-from pydantic import BaseModel, Field
-from src.models.location import Location
+from typing import List, Optional, Tuple
+from src.models.location import (
+    Location,
+    GADMHierarchy,
+    GADMHierarchyLevel,
+    GADMMatch,
+    GadmMatchType,
+    ResolvedLocation,
+)
+from src.log import logger
 
-# Path to GADM GeoPackage
 HERE = os.path.dirname(os.path.abspath(__file__))
 GADM_GPKG_PATH = os.path.join(HERE, "gadm404.gpkg")
 
 
-class GADMMatch(BaseModel):
-    """Result from GADM resolution"""
-
-    gid: str = Field(description="GADM ID (e.g., 'USA.11.1_1')")
-    level: int = Field(
-        description="GADM level (0=country, 1=state, 2=county, 3=locality)"
-    )
-    matched_name: str = Field(description="The place name that was matched")
-    canonical_name: str = Field(description="Canonical name from GADM")
-    hierarchy: Dict[str, str] = Field(
-        description="Full hierarchy (level_0: 'USA', level_1: 'Florida', ...)"
-    )
-    resolution_trace: List[str] = Field(
-        default_factory=list,
-        description="Step-by-step trace of how this location was resolved"
-    )
-
-
-def _get_connection(trace: bool = False) -> sqlite3.Connection:
-    """Open read-only connection to GADM GeoPackage"""
+def _open_gadm_connection(trace: bool = False) -> sqlite3.Connection:
+    """Open read-only connection to GADM GeoPackage database."""
     if not os.path.exists(GADM_GPKG_PATH):
         raise FileNotFoundError(f"GADM file not found: {GADM_GPKG_PATH}")
 
@@ -57,28 +29,36 @@ def _get_connection(trace: bool = False) -> sqlite3.Connection:
     return conn
 
 
-def _get_layers(conn: sqlite3.Connection) -> List[str]:
-    """Get feature table names from GeoPackage"""
+def _get_feature_layers(conn: sqlite3.Connection) -> List[str]:
+    """Retrieve all feature table names from the GeoPackage."""
     cur = conn.cursor()
     cur.execute("SELECT table_name FROM gpkg_contents WHERE data_type = 'features'")
     return [row[0] for row in cur.fetchall()]
 
 
-def _get_columns(conn: sqlite3.Connection, table: str) -> List[str]:
-    """Get column names for a table"""
+def _get_table_columns(conn: sqlite3.Connection, table: str) -> List[str]:
+    """Retrieve column names for a specific table."""
     cur = conn.cursor()
     cur.execute(f'PRAGMA table_info("{table}")')
     return [row[1] for row in cur.fetchall()]
 
 
-def _build_name_predicate(
+def _build_name_match_clause(
     level: int, place_name: str, cols: List[str]
 ) -> Tuple[str, List[str]]:
     """
-    Build SQL predicate for matching place name at a specific GADM level.
+    Build SQL WHERE clause for matching place name at a specific GADM level.
 
-    Checks NAME_n, VARNAME_n, NL_NAME_n columns for that level.
-    Uses exact (case-insensitive) matching only.
+    Searches across NAME_n, VARNAME_n, and NL_NAME_n columns using
+    case-insensitive exact matching.
+
+    Args:
+        level: GADM level (0-3)
+        place_name: Name to search for
+        cols: Available columns in the table
+
+    Returns:
+        Tuple of (SQL clause, parameter list)
     """
     name_cols = [
         c
@@ -95,70 +75,102 @@ def _build_name_predicate(
     return f"({' OR '.join(predicates)})", params
 
 
-def _extract_hierarchy(row: sqlite3.Row) -> Dict[str, str]:
-    """Extract full hierarchy from a GADM row"""
+def _build_parent_constraint_clause(
+    level: int, parent_gid: Optional[str], cols: List[str]
+) -> Tuple[str, List[str]]:
+    """
+    Build SQL WHERE clause for parent GID constraint.
+
+    Args:
+        level: Current GADM level
+        parent_gid: Parent's GID to constrain by
+        cols: Available columns in the table
+
+    Returns:
+        Tuple of (SQL clause, parameter list), or ("1=1", []) if no constraint
+    """
+    if not parent_gid or level == 0:
+        return "1=1", []
+
+    parent_col = f"GID_{level - 1}"
+    if parent_col not in cols:
+        # Parent column doesn't exist - signal no match possible
+        return "1=0", []
+
+    return f'"{parent_col}" = ?', [parent_gid]
+
+
+def _build_hierarchy_from_row(row: sqlite3.Row, max_level: int) -> GADMHierarchy:
+    """
+    Extract GADM hierarchy from a database row.
+
+    Args:
+        row: Database row containing GADM data
+        max_level: Maximum level to extract (inclusive)
+
+    Returns:
+        GADMHierarchy object with levels 0 through max_level
+    """
     row_dict = dict(row)
-    hier = {}
-    for level in range(5):
+    levels_kwargs = {}
+
+    # Our hierarchy model supports levels 0..3
+    for level in range(min(max_level, 3) + 1):
         name = row_dict.get(f"NAME_{level}")
-        if name:
-            hier[f"level_{level}"] = name
-    return hier
+        gid = row_dict.get(f"GID_{level}")
+        if name or gid:
+            levels_kwargs[f"level_{level}"] = GADMHierarchyLevel(
+                name=name,
+                gid=gid if gid else None,
+            )
+
+    return GADMHierarchy(**levels_kwargs)
 
 
-def _search_at_level(
+def _find_place_in_layer(
     conn: sqlite3.Connection,
     layer: str,
     level: int,
     place_name: str,
     parent_gid: Optional[str] = None,
     query_trace: Optional[List[str]] = None,
-) -> Optional[GADMMatch]:
+) -> Optional[sqlite3.Row]:
     """
-    Search for a place at a specific GADM level.
-    
-    Uses exact name matching and optional parent GID constraint.
-    
+    Search for a place in a specific GADM layer at a given level.
+
+    Uses exact name matching with optional parent GID constraint for
+    hierarchical filtering.
+
     Args:
         conn: Database connection
-        layer: GADM layer name
+        layer: GADM layer (table) name
         level: GADM level (0=country, 1=state, 2=county, 3=locality)
         place_name: Name to search for
-        parent_gid: Optional parent's GID for exact hierarchical constraint
-        query_trace: Optional list to append SQL queries to
-        
-    Returns:
-        GADMMatch if found, None otherwise
-    """
-    cols = _get_columns(conn, layer)
+        parent_gid: Optional parent's GID for hierarchical constraint
+        query_trace: Optional list to append executed SQL queries to
 
-    # Build name predicate (exact match only)
-    name_clause, name_params = _build_name_predicate(level, place_name, cols)
-    
-    if name_clause == "1=0":
+    Returns:
+        Database row if found, None otherwise
+    """
+    cols = _get_table_columns(conn, layer)
+
+    # Build WHERE clause components
+    name_clause, name_params = _build_name_match_clause(level, place_name, cols)
+    parent_clause, parent_params = _build_parent_constraint_clause(
+        level, parent_gid, cols
+    )
+
+    # Check if search is viable
+    if name_clause == "1=0" or parent_clause == "1=0":
         return None
 
-    # Build parent GID constraint (exact match)
-    if parent_gid and level > 0:
-        parent_col = f"GID_{level - 1}"
-        if parent_col in cols:
-            parent_clause = f'"{parent_col}" = ?'
-            parent_params = [parent_gid]
-        else:
-            # Parent column doesn't exist in this layer
-            return None
-    else:
-        parent_clause = "1=1"
-        parent_params = []
-
-    # Combine predicates
+    # Construct and execute query
     where_sql = f"{name_clause} AND {parent_clause}"
     sql = f'SELECT * FROM "{layer}" WHERE {where_sql} LIMIT 1'
     params = name_params + parent_params
 
-    # Log query with parameters
+    # Log query for debugging
     if query_trace is not None:
-        # Format query with parameters for readability
         query_str = sql
         for param in params:
             query_str = query_str.replace('?', f"'{param}'", 1)
@@ -171,142 +183,194 @@ def _search_at_level(
     if not row:
         return None
 
+    # Validate that the matched row has a GID for this level
     row_dict = dict(row)
     gid = row_dict.get(f"GID_{level}")
-    canonical_name = row_dict.get(f"NAME_{level}")
-    hierarchy = _extract_hierarchy(row)
-
     if not gid:
         return None
 
+    return row
+
+
+def _find_place_across_layers(
+    conn: sqlite3.Connection,
+    layers: List[str],
+    level: int,
+    place_name: str,
+    parent_gid: Optional[str] = None,
+    query_trace: Optional[List[str]] = None,
+) -> Optional[sqlite3.Row]:
+    """
+    Search for a place across all GADM layers at a given level.
+
+    Tries each layer until a match is found.
+
+    Args:
+        conn: Database connection
+        layers: List of layer names to search
+        level: GADM level to search at
+        place_name: Name to search for
+        parent_gid: Optional parent GID constraint
+        query_trace: Optional query trace list
+
+    Returns:
+        First matching row found, or None
+    """
+    for layer in layers:
+        row = _find_place_in_layer(
+            conn, layer, level, place_name, parent_gid, query_trace
+        )
+        if row:
+            return row
+
+    return None
+
+
+def _create_match_result(
+    achieved_level: Optional[int],
+    achieved_row: Optional[sqlite3.Row],
+    expected_level: int,
+    query_trace: List[str],
+) -> GADMMatch:
+    """
+    Create a GADMMatch result from the matching process.
+
+    Args:
+        achieved_level: Deepest level successfully matched
+        achieved_row: Database row for the achieved level
+        expected_level: Most specific level that was requested
+        query_trace: List of executed SQL queries
+
+    Returns:
+        GADMMatch with appropriate match type and hierarchy
+    """
+    if achieved_level is None or achieved_row is None:
+        return GADMMatch(
+            match_type=GadmMatchType.NONE,
+            gadm_hierarchy=None,
+            query_trace=query_trace,
+        )
+
+    hierarchy = _build_hierarchy_from_row(achieved_row, max_level=achieved_level)
+    match_type = (
+        GadmMatchType.COMPLETE
+        if achieved_level == expected_level
+        else GadmMatchType.PARTIAL
+    )
+
     return GADMMatch(
-        gid=gid,
-        level=level,
-        matched_name=place_name,
-        canonical_name=canonical_name,
-        hierarchy=hierarchy,
+        match_type=match_type,
+        gadm_hierarchy=hierarchy,
+        query_trace=query_trace,
     )
 
 
-def resolve_to_gadm(location: Location, trace: bool = False) -> Optional[GADMMatch]:
+def perform_match(location: Location, trace: bool = False) -> GADMMatch:
     """
-    Resolve a location address to a GADM ID using recursive narrowing.
-    
+    Resolve a location address to GADM identifiers using hierarchical narrowing.
+
     Strategy:
-        1. Start from least specific (country)
-        2. Find exact match and get its GID
+        1. Start from least specific level (country)
+        2. Find exact match and extract its GID
         3. Use that GID to constrain search at next level (state)
-        4. Continue down the hierarchy until most specific level
-        
+        4. Continue down the hierarchy to most specific level
+
     Example:
         Location(country="USA", state="Florida", county="Alachua")
-        
+
         Step 1: Find USA → GID_0 = "USA"
         Step 2: Find Florida WHERE GID_0 = "USA" → GID_1 = "USA.11_1"
         Step 3: Find Alachua WHERE GID_1 = "USA.11_1" → GID_2 = "USA.11.1_1"
-        
+
     Args:
-        location: Location to resolve
-        trace: Enable SQL query tracing to stderr (sqlite3 feature)
-        
+        location: Location with hierarchy to resolve
+        trace: Enable SQL query tracing to stderr (for debugging)
+
     Returns:
-        GADMMatch with the most specific level found, or None if any level fails.
-        The GADMMatch.resolution_trace contains all SQL queries executed.
+        GADMMatch with the deepest level successfully matched.
+        Match type indicates COMPLETE if all levels matched, PARTIAL if some matched,
+        or NONE if no match found. The query_trace contains all executed SQL.
     """
-    conn = _get_connection(trace=trace)
-
+    conn = _open_gadm_connection(trace=trace)
     try:
-        layers = _get_layers(conn)
-        hierarchy = location.get_hierarchy()
-        # for context logging
-        resolution_trace = [] 
+        # Get available layers and prepare hierarchy
+        layers = _get_feature_layers(conn)
+        original_hierarchy = location.get_hierarchy()
+        query_trace = []
 
-        if not hierarchy:
-            return None
+        if not original_hierarchy:
+            return GADMMatch(
+                match_type=GadmMatchType.NONE,
+                gadm_hierarchy=None,
+                query_trace=query_trace,
+            )
 
-        # Reverse to go from least specific to most specific
+        # Reverse hierarchy to search from least to most specific
         # Original: [(3, 'locality', 'X'), (2, 'county', 'Y'), (1, 'state', 'Z'), (0, 'country', 'W')]
         # Reversed: [(0, 'country', 'W'), (1, 'state', 'Z'), (2, 'county', 'Y'), (3, 'locality', 'X')]
-        hierarchy = list(reversed(hierarchy))
+        hierarchy = list(reversed(original_hierarchy))
 
-        current_match = None
-        current_gid = None
+        # Track progress through hierarchy
+        current_parent_gid = None
+        achieved_level: Optional[int] = None
+        achieved_row: Optional[sqlite3.Row] = None
 
-        # Narrow down the search by searching each level, using previous level's GID as constraint
+        # Iteratively narrow search through each hierarchy level
         for level, level_name, place_name in hierarchy:
+            # Skip continent level (not in GADM)
             if level_name == "continent":
                 continue
 
-            level_match = None
+            # Search across all layers for this level
+            matched_row = _find_place_across_layers(
+                conn, layers, level, place_name, current_parent_gid, query_trace
+            )
 
-            # Try each layer until we find a match
-            for layer in layers:
-                match = _search_at_level(
-                    conn, layer, level, place_name, parent_gid=current_gid, query_trace=resolution_trace
-                )
-                if match:
-                    level_match = match
-                    break
+            if not matched_row:
+                # No match found - stop here and return what we have
+                break
 
-            if not level_match:
-                # If any level in the chain fails, return the last successful match
-                # (e.g., if county not found, return state match)
-                if current_match:
-                    current_match.resolution_trace = resolution_trace
-                return current_match
+            # Update tracking for next iteration
+            achieved_level = level
+            achieved_row = matched_row
+            current_parent_gid = dict(matched_row).get(f"GID_{level}")
 
-            # Update for next iteration
-            current_match = level_match
-            current_gid = level_match.gid
-
-        # Attach trace to final result
-        if current_match:
-            current_match.resolution_trace = resolution_trace
-
-        return current_match
+        # Build final result
+        expected_level = original_hierarchy[0][0]  # Most specific level requested
+        return _create_match_result(
+            achieved_level, achieved_row, expected_level, query_trace
+        )
 
     finally:
         conn.close()
 
 
-# Testing methods
-if __name__ == "__main__":
-    # Example 1: Simple state lookup
-    print("Example 1: California")
-    loc = Location(country="United States", country_iso="USA", state="California")
-    match = resolve_to_gadm(loc)
-    print(f"  GADM ID: {match.gid if match else 'Not found'}")
-    if match and match.resolution_trace:
-        print("  SQL Queries:")
-        for query in match.resolution_trace:
-            print(f"    {query}")
-    print()
+async def map_locations_to_gadm(
+    locations: list[Location],
+) -> list[ResolvedLocation]:
+    matched_locations: list[ResolvedLocation] = []
+    for loc in locations:
+        try:
+            gadm_match: GADMMatch = perform_match(loc, trace=False)
+            resolved = ResolvedLocation(**loc.model_dump(), **gadm_match.model_dump())
+            if gadm_match.match_type == GadmMatchType.NONE:
+                logger.warning(f"GADM | Location not found: {loc}")
+            else:
+                logger.info(f"GADM | Resolved {loc} → {gadm_match.match_type}")
 
-    # Example 2: County with state context (disambiguation)
-    print("Example 2: Alachua County, Florida")
-    loc = Location(country="United States", country_iso="USA", state="Florida", county="Alachua")
-    match = resolve_to_gadm(loc)
-    print(f"  GADM ID: {match.gid if match else 'Not found'}")
-    print(f"  Canonical: {match.canonical_name if match else 'N/A'}")
-    if match and match.resolution_trace:
-        print("  SQL Queries:")
-        for query in match.resolution_trace:
-            print(f"    {query}")
-    print()
+            matched_locations.append(resolved)
+        except Exception as e:
+            logger.error(f"GADM | Error validating {loc}: {str(e)}")
+            matched_locations.append(
+                ResolvedLocation(
+                    **loc.model_dump(),
+                    **GADMMatch(match_type=GadmMatchType.NONE).model_dump(),
+                )
+            )
 
-    # Example 3: Ambiguous name (should fail without parent context)
-    print("Example 3: Just 'Springfield' (ambiguous)")
-    loc = Location(locality="Springfield")
-    match = resolve_to_gadm(loc)
-    print(f"  GADM ID: {match.gid if match else 'Not found (too ambiguous)'}")
-    print()
+    return matched_locations
 
-    # Example 4: Springfield with state context (disambiguated)
-    print("Example 4: Springfield, Illinois (disambiguated)")
-    loc = Location(country="United States", country_iso="USA", state="Florida", locality="Springfield")
-    match = resolve_to_gadm(loc)
-    print(f"  GADM ID: {match.gid if match else 'Not found'}")
-    if match and match.resolution_trace:
-        print("  SQL Queries:")
-        for query in match.resolution_trace:
-            print(f"    {query}")
+
+def serialize_locations(locations: list[ResolvedLocation]) -> list[dict]:
+    """Serialize resolved locations to flat JSON-serializable dicts."""
+    return [loc.model_dump(exclude_none=True, mode="json") for loc in locations]

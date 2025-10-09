@@ -1,4 +1,5 @@
 from typing import Optional, List, Tuple, Dict
+from enum import Enum
 from pydantic import BaseModel, Field
 
 
@@ -66,8 +67,6 @@ class Location(BaseModel):
             return ("locality", self.locality)
         if self.county:
             return ("county", self.county)
-        if self.protected_area:
-            return ("protected_area", self.protected_area)
         if self.state:
             return ("state", self.state)
         if self.country:
@@ -112,12 +111,12 @@ class Location(BaseModel):
 
         Returns:
             List from most specific to least specific:
-            [(3, 'locality', 'Gainesville'), (1, 'state', 'Florida'), (0, 'country', 'USA')]
+            [(3, 'locality', 'Gainesville'), (2, 'county', 'Alachua'), (1, 'state', 'Florida'), (0, 'country', 'USA')]
 
         Example:
-            >>> loc = Location(country="USA", state="Florida", locality="Gainesville")
+            >>> loc = Location(country="USA", state="Florida", county="Alachua", locality="Gainesville")
             >>> loc.get_hierarchy()
-            [(3, 'locality', 'Gainesville'), (1, 'state', 'Florida'), (0, 'country', 'USA')]
+            [(3, 'locality', 'Gainesville'), (2, 'county', 'Alachua'), (1, 'state', 'Florida'), (0, 'country', 'USA')]
         """
         hierarchy = []
 
@@ -129,9 +128,6 @@ class Location(BaseModel):
 
         if self.county:
             hierarchy.append((2, "county", self.county))
-
-        if self.protected_area:
-            hierarchy.append((2, "protected_area", self.protected_area))
 
         if self.state:
             hierarchy.append((1, "state", self.state))
@@ -199,3 +195,99 @@ class Location(BaseModel):
         if self.continent:
             parts.append(self.continent)
         return ", ".join(parts) if parts else "Empty Location"
+
+
+class GadmMatchType(Enum):
+    """
+    Amount of location information that was found in GADM
+    """
+
+    COMPLETE = "complete"
+    PARTIAL = "partial"
+    NONE = "none"
+
+
+class GADMHierarchyLevel(BaseModel):
+    """Represents a single level in the GADM administrative hierarchy."""
+
+    name: Optional[str] = Field(
+        default=None, description="Administrative division name at this level"
+    )
+    gid: Optional[str] = Field(
+        default=None, description="GADM identifier at this level"
+    )
+
+
+class GADMHierarchy(BaseModel):
+    """Complete GADM administrative hierarchy."""
+
+    level_0: Optional[GADMHierarchyLevel] = Field(
+        default=None, description="Country level"
+    )
+    level_1: Optional[GADMHierarchyLevel] = Field(
+        default=None, description="First administrative division (state/province)"
+    )
+    level_2: Optional[GADMHierarchyLevel] = Field(
+        default=None, description="Second administrative division (county/district)"
+    )
+    level_3: Optional[GADMHierarchyLevel] = Field(
+        default=None, description="Third administrative division"
+    )
+
+
+class GADMMatch(BaseModel):
+    """
+    Location information that was found in GADM
+    """
+
+    match_type: GadmMatchType = Field(
+        default=GadmMatchType.NONE,
+        description="Amount of location information that was found in GADM",
+    )
+    gadm_hierarchy: Optional[GADMHierarchy] = Field(
+        default=None,
+        description="Hierarchy of location information that was found in GADM",
+    )
+    query_trace: Optional[List[str]] = Field(
+        default=None,
+        description="Trace of queries made to GADM",
+    )
+
+
+class ResolvedLocation(Location, GADMMatch):
+    """Location merged with GADM resolution - all fields flattened."""
+
+    pass
+
+
+class EnrichedLocation(BaseModel):
+    """Location enriched with GADM validation and hierarchy data."""
+
+    # Original LLM extraction
+    original_location: Location = Field(description="Original location from LLM")
+
+    # GADM enrichment
+    was_found_in_gadm: bool = Field(
+        default=False,
+        description="True if location was found and validated in GADM database",
+    )
+    gadm_gid: Optional[str] = Field(
+        default=None, description="GADM ID (e.g., 'USA.11.1_1')"
+    )
+    gadm_level: Optional[int] = Field(
+        default=None,
+        description="Administrative level in GADM (0=country, 1=state, etc.)",
+    )
+    gadm_canonical_name: Optional[str] = Field(
+        default=None, description="Canonical name from GADM"
+    )
+    gadm_hierarchy: Optional[GADMHierarchy] = Field(
+        default=None, description="Complete administrative hierarchy from GADM"
+    )
+    resolution_trace: Optional[list] = Field(
+        default=None, description="SQL queries executed during GADM resolution"
+    )
+    validation_note: Optional[str] = Field(
+        default=None,
+        description="Notes about validation process (e.g., 'exact match', 'not found')",
+    )
