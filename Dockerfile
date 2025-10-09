@@ -24,9 +24,9 @@ WORKDIR /home/app
 RUN apt-get install -y wget unzip \
       && mkdir -p src/gadm \
       && wget -O /tmp/gadm.zip https://geodata.ucdavis.edu/gadm/gadm4.1/gadm_410-gpkg.zip \
-      && unzip -j /tmp/gadm.zip "gadm_410-levels.gpkg" -d src/gadm \
-      && mv src/gadm/gadm_410-levels.gpkg src/gadm/gadm.gpkg \
-      && rm /tmp/gadm.zip \
+      && unzip /tmp/gadm.zip -d /tmp/gadm \
+      && mv /tmp/gadm/*.gpkg src/gadm/gadm.gpkg \
+      && rm -rf /tmp/gadm.zip /tmp/gadm \
       && chown -R nonroot:nonroot src/gadm
 
 COPY --chown=nonroot:nonroot . .
