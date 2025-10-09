@@ -77,7 +77,7 @@ def create_response_model(parameter_model: Type[BaseModel]) -> Type[BaseModel]:
 
 def get_system_prompt(entrypoint_id: str):
     prompt = ""
-    with open("src/resources/sysprompt.md", "r") as f:
+    with open("src/resources/prompts/parse_api_parameters.md", "r") as f:
         prompt += f.read()
 
     examples = []
