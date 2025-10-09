@@ -182,7 +182,7 @@ class GeographicFilters(GadmFilters):
 
     locality: Optional[List[str]] = Field(
         None,
-        description="The specific description of the place. Use this when user insists on a locality name instead providing coordinates.",
+        description="It's an exact match field, Use this when user insists on a locality name.",
         examples=[["Miami-Dade County, Florida"]],
     )
 
@@ -822,7 +822,7 @@ class SearchFilters(BaseModel):
 
     q: Optional[str] = Field(
         None,
-        description="Simple full-text search parameter. The value for this parameter can be a simple word or a phrase. Wildcards are not supported. This parameter can search for text fields such as locality, description, name etc.. please use it wisely. If any of the locations is not resolved into a gadm_id, you may use parameter like `q` or `locality`.",
+        description="Simple full-text search parameter. The value for this parameter can be a simple word or a phrase. Wildcards are not supported.",
         examples=["mammal", "Quercus robur"],
     )
 

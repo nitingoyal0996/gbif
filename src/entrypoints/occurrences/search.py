@@ -22,6 +22,10 @@ from src.gbif.resolve_parameters import (
     resolve_names_to_taxonkeys,
     resolve_pending_search_parameters,
 )
+from src.gadm.gadm import (
+    map_locations_to_gadm,
+    serialize_locations,
+)
 
 
 description = """
@@ -54,7 +58,8 @@ async def run(context: ResponseContext, request: str):
         await process.log(f"Request recieved: {request} \n\nParsing request...")
 
         expansion_response = await _preprocess_user_request(request)
-        expandedRequest = f"User request: {request} Identified organisms in the request: {json.dumps(serialize_organisms(expansion_response.organisms))}"
+        enrich_locations = await map_locations_to_gadm(expansion_response.locations)
+        expandedRequest = f"User request: {request} Identified organisms in the request: {json.dumps(serialize_organisms(expansion_response.organisms))} Identified locations in the request: {json.dumps(serialize_locations(enrich_locations))}"
         await process.log(
             f"Expanded request",
             data={
@@ -62,6 +67,7 @@ async def run(context: ResponseContext, request: str):
                 "identified_organisms": serialize_organisms(
                     expansion_response.organisms
                 ),
+                "identified_locations": serialize_locations(enrich_locations),
             },
         )
 
