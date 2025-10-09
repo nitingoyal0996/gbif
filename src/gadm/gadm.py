@@ -12,7 +12,7 @@ from src.models.location import (
 from src.log import logger
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-GADM_GPKG_PATH = os.path.join(HERE, "gadm404.gpkg")
+GADM_GPKG_PATH = os.path.join(HERE, "gadm.gpkg")
 
 
 def _open_gadm_connection(trace: bool = False) -> sqlite3.Connection:
