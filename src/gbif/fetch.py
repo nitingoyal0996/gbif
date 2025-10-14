@@ -65,47 +65,81 @@ async def execute_paginated_request(
 ) -> Dict[str, Any]:
     """
     Execute multiple paginated requests to fetch up to total_limit records.
+    Fetches 5 pages concurrently at a time for better performance.
 
     Returns:
         Combined response dictionary with all results and updated metadata
     """
     batch_size = 300
+    pages_per_batch = 5
     initial_offset = search_params.offset or 0
     offset = initial_offset
     all_results = []
     first_response_metadata = None
 
     while len(all_results) < total_limit:
-        remaining = total_limit - len(all_results)
-        this_limit = min(batch_size, remaining)
+        page_requests = []
+        current_offset = offset
 
-        paginated_params = search_params.model_copy(
-            update={"limit": this_limit, "offset": offset}
+        for _ in range(pages_per_batch):
+            remaining = total_limit - len(all_results) - len(page_requests) * batch_size
+            if remaining <= 0:
+                break
+
+            this_limit = min(batch_size, remaining)
+            paginated_params = search_params.model_copy(
+                update={"limit": this_limit, "offset": current_offset}
+            )
+            request_url = api.build_occurrence_search_url(paginated_params)
+            page_requests.append((request_url, current_offset))
+            current_offset += this_limit
+
+        if not page_requests:
+            break
+
+        await process.log(
+            f"Fetching {len(page_requests)} pages starting at offset {offset}"
         )
-        request_url = api.build_occurrence_search_url(paginated_params)
-        await process.log(f"Request URL: {request_url}")
         try:
-            response = await execute_request(request_url)
+            responses = await asyncio.gather(
+                *[execute_request(url) for url, _ in page_requests],
+                return_exceptions=True,
+            )
         except Exception as e:
             if all_results:
                 break
             raise e
 
-        if first_response_metadata is None:
-            first_response_metadata = {
-                "count": response.get("count", 0),
-                "endOfRecords": response.get("endOfRecords", False),
-                "status_code": response.get("status_code", 200),
-            }
+        end_of_records = False
+        for i, response in enumerate(responses):
+            if isinstance(response, Exception):
+                if all_results:
+                    end_of_records = True
+                    break
+                raise response
 
-        batch_results = response.get("results", [])
-        if not batch_results:
-            break
-        all_results.extend(batch_results)
+            if first_response_metadata is None:
+                first_response_metadata = {
+                    "count": response.get("count", 0),
+                    "endOfRecords": response.get("endOfRecords", False),
+                    "status_code": response.get("status_code", 200),
+                }
 
-        if response.get("endOfRecords", False) or len(batch_results) < this_limit:
+            batch_results = response.get("results", [])
+            if not batch_results:
+                end_of_records = True
+                break
+
+            all_results.extend(batch_results)
+
+            if response.get("endOfRecords", False) or len(batch_results) < batch_size:
+                end_of_records = True
+                break
+
+            offset = page_requests[i][1] + len(batch_results)
+
+        if end_of_records:
             break
-        offset += this_limit
 
     combined_response = {
         "offset": initial_offset,

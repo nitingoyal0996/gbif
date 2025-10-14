@@ -65,8 +65,8 @@ class GBIFOccurrenceBaseParams(
     limit: Optional[int] = Field(
         300,
         ge=0,
-        le=5000,
-        description="Controls the number of results in the page. If incase user has requested for all of the records search, this parameter value must be set to 5000.",
+        le=4800,
+        description="Controls the number of results in the page. If incase user has requested for all of the records search, this parameter value must be set to 4800.",
     )
 
     offset: Optional[int] = Field(

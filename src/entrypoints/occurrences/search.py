@@ -95,8 +95,7 @@ async def run(context: ResponseContext, request: str):
             data=serialize_for_log(search_params),
         )
 
-        # For small requests (≤300), add shuffle parameter for randomization
-        request_limit = search_params.limit or 100
+        request_limit = search_params.limit
         multi_page_request = request_limit > 300
         SEED = 40
         search_params = search_params.model_copy(update={"shuffle": SEED})
