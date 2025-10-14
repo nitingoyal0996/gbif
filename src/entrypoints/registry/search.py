@@ -77,6 +77,18 @@ async def run(context: ResponseContext, request: str):
             total = raw_response.get("count", 0)
             portal_url = api.build_portal_url(api_url)
 
+            page_info = {
+                "count": total,
+                "limit": params.limit,
+                "offset": params.offset,
+            }
+            pagination_message = "API pagination information of the response"
+            if page_info.get("count") > page_info.get("limit") + page_info.get(
+                "offset"
+            ):
+                pagination_message += "Warning: The response is truncated due to pagination and only contain subset of the data available on GBIF."
+            await process.log(pagination_message, data=page_info)
+
             await process.create_artifact(
                 mimetype="application/json",
                 description=description,
