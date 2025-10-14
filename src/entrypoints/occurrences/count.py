@@ -88,6 +88,7 @@ async def run(context: ResponseContext, request: str):
             expansion_response,
         )
 
+        logger.info(f"Parameter parsing plan: {response}")
         await process.log(f"Parameter parsing plan", data={"plan": response.plan})
         api = GbifApi()
 

@@ -79,6 +79,7 @@ async def run(context: ResponseContext, request: str):
             expansion_response,
         )
         await process.log(f"Parameter parsing plan", data={"plan": response.plan})
+        logger.info(f"Parameter parsing plan: {response}")
         api = GbifApi()
 
         param_result = await _get_parameters(response, expandedRequest, api, process)
@@ -97,9 +98,8 @@ async def run(context: ResponseContext, request: str):
         # For small requests (≤300), add shuffle parameter for randomization
         request_limit = search_params.limit or 100
         multi_page_request = request_limit > 300
-        if not multi_page_request and not search_params.shuffle:
-            seed = random.randint(1, 100)
-            search_params = search_params.model_copy(update={"shuffle": seed})
+        SEED = 40
+        search_params = search_params.model_copy(update={"shuffle": SEED})
 
         try:
             api_url = api.build_occurrence_search_url(search_params)
