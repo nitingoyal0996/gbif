@@ -6,6 +6,8 @@ You **MUST** not make up any field names in `params`, this will fail the validat
 
 You **MUST** use gadm parameters for location data whenever provided with the request. 
 
+You **MUST** check for the user's intent requests “all” results (e.g., “all records”, “everything”, “entire dataset”), set `params.limit` to the maximum allowed for the endpoint.
+
 ## Location fallback policy (when GADM cannot resolve a specific place)
 - Prefer GADM filters in this order: `gadmGid` > `gadmLevel3Gid` > `gadmLevel2Gid` > `gadmLevel1Gid` > `gadmLevel0Gid`.
 - If the requested locality (city/town) is not found at GADM level 3:

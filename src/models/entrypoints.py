@@ -62,15 +62,13 @@ class GBIFOccurrenceBaseParams(
     - PaginationParams: Unified pagination parameters
     """
 
-    # Override limit default for occurrence searches (100 instead of 20)
     limit: Optional[int] = Field(
-        100,
+        300,
         ge=0,
         le=5000,
-        description="Controls the number of results in the page. Values up to 300 return a single request. Values from 301-5000 will automatically paginate multiple requests. Using a value higher than 5000 will be overwritten with the maximum threshold of 5000. A limit of 0 will return no record data.",
+        description="Controls the number of results in the page. If incase user has requested for all of the records search, this parameter value must be set to 5000.",
     )
 
-    # Override offset max for occurrence searches (100,000 max)
     offset: Optional[int] = Field(
         0,
         ge=0,
