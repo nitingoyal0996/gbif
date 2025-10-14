@@ -66,8 +66,8 @@ class GBIFOccurrenceBaseParams(
     limit: Optional[int] = Field(
         100,
         ge=0,
-        le=300,
-        description="Controls the number of results in the page. Using too high a value will be overwritten with the maximum threshold, which is 300 for occurrence searches. A limit of 0 will return no record data.",
+        le=5000,
+        description="Controls the number of results in the page. Values up to 300 return a single request. Values from 301-5000 will automatically paginate multiple requests. Using a value higher than 5000 will be overwritten with the maximum threshold of 5000. A limit of 0 will return no record data.",
     )
 
     # Override offset max for occurrence searches (100,000 max)

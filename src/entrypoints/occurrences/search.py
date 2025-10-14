@@ -1,12 +1,13 @@
 import uuid
 import json
+import random
 
 from dataclasses import dataclass
 from ichatbio.agent_response import ResponseContext, IChatBioAgentProcess
 from ichatbio.types import AgentEntrypoint
 
 from src.gbif.api import GbifApi
-from src.gbif.fetch import execute_request
+from src.gbif.fetch import execute_request, execute_paginated_request
 from src.models.entrypoints import GBIFOccurrenceSearchParams
 from src.models.validators import OccurrenceSearchParamsValidator
 from src.log import with_logging, logger
@@ -93,13 +94,28 @@ async def run(context: ResponseContext, request: str):
             data=serialize_for_log(search_params),
         )
 
-        api_url = api.build_occurrence_search_url(search_params)
+        # For small requests (≤300), add shuffle parameter for randomization
+        request_limit = search_params.limit or 100
+        multi_page_request = request_limit > 300
+        if not multi_page_request and not search_params.shuffle:
+            seed = random.randint(1, 100)
+            search_params = search_params.model_copy(update={"shuffle": seed})
 
         try:
-            await process.log(
-                f"Sending data retrieval request to GBIF -", data={"url": api_url}
-            )
-            raw_response = await execute_request(api_url)
+            api_url = api.build_occurrence_search_url(search_params)
+            if multi_page_request:
+                await process.log(
+                    f"Sending data retrieval requests to GBIF (limit: {request_limit}) -",
+                    data={"total_limit": request_limit},
+                )
+                raw_response = await execute_paginated_request(
+                    search_params, api, request_limit
+                )
+            else:
+                await process.log(
+                    f"Sending data retrieval request to GBIF -", data={"url": api_url}
+                )
+                raw_response = await execute_request(api_url)
             status_code = raw_response.get("status_code", 200)
             if status_code != 200:
                 await process.log(
@@ -125,17 +141,32 @@ async def run(context: ResponseContext, request: str):
             artifact_description = await _generate_artifact_description(
                 f"User request: {request} Identified organisms in the request: {json.dumps(serialize_organisms(expansion_response.organisms))}, Search parameters: {json.dumps(serialize_for_log(search_params))}, URL: {api_url}",
             )
-            await process.create_artifact(
-                mimetype="application/json",
-                description=artifact_description,
-                uris=[api_url],
-                metadata={
-                    "portal_url": portal_url,
-                    "data_source": "GBIF Occurrence",
-                },
-            )
 
-            summary = _generate_response_summary(page_info, portal_url)
+            if multi_page_request:
+                await process.create_artifact(
+                    mimetype="application/json",
+                    description=artifact_description,
+                    content=json.dumps(raw_response, indent=2).encode("utf-8"),
+                    metadata={
+                        "portal_url": portal_url,
+                        "data_source": "GBIF Occurrence",
+                        "total_records_retrieved": len(raw_response.get("results", [])),
+                    },
+                )
+            else:
+                await process.create_artifact(
+                    mimetype="application/json",
+                    description=artifact_description,
+                    uris=[api_url],
+                    metadata={
+                        "portal_url": portal_url,
+                        "data_source": "GBIF Occurrence",
+                    },
+                )
+
+            summary = _generate_response_summary(
+                page_info, portal_url, multi_page_request
+            )
 
             await context.reply(summary)
 
@@ -153,9 +184,14 @@ async def run(context: ResponseContext, request: str):
             )
 
 
-def _generate_response_summary(page_info: dict, portal_url: str) -> str:
+def _generate_response_summary(
+    page_info: dict, portal_url: str, paginated: bool = False
+) -> str:
     if page_info.get("count") > 0:
-        summary = f"I have successfully searched for occurrences and matching records. Retreived {page_info.get('limit')} records per page, {page_info.get('offset')} records offset. Total records found: {page_info.get('count')}. "
+        if paginated:
+            summary = f"I have successfully searched for occurrences and retrieved {page_info.get('limit')} records using pagination across multiple requests. Total records available in GBIF: {page_info.get('count')}. "
+        else:
+            summary = f"I have successfully searched for occurrences and matching records. Retrieved {page_info.get('limit')} records per page, {page_info.get('offset')} records offset. Total records found: {page_info.get('count')}. "
     else:
         summary = "I have not found any occurrence records matching your criteria. "
     summary += f"The results can also be viewed in the GBIF portal at {portal_url}."
