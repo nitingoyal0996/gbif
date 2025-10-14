@@ -10,7 +10,6 @@ from src.models.validators import SpeciesFacetsParamsValidator
 from src.log import with_logging, logger
 from src.gbif.parser import parse
 from src.utils import _preprocess_user_request, serialize_organisms
-from src.gadm.gadm import map_locations_to_gadm, serialize_locations
 
 description = """
 **Use Case:** Use this entrypoint to get statistical counts and summaries of species themselves, based on criteria like taxonomic rank, conservation status, or habitat.
@@ -44,8 +43,7 @@ async def run(context: ResponseContext, request: str):
         await process.log(f"Request received: {request} \n\nParsing request...")
 
         expansion_response = await _preprocess_user_request(request)
-        enrich_locations = await map_locations_to_gadm(expansion_response.locations)
-        expandedRequest = f"User request: {request} Identified organisms in the request: {json.dumps(serialize_organisms(expansion_response.organisms))} Identified locations in the request: {json.dumps(serialize_locations(enrich_locations))}"
+        expandedRequest = f"User request: {request} Identified organisms in the request: {json.dumps(serialize_organisms(expansion_response.organisms))}"
         await process.log(
             f"Expanded request",
             data={
@@ -53,7 +51,6 @@ async def run(context: ResponseContext, request: str):
                 "identified_organisms": serialize_organisms(
                     expansion_response.organisms
                 ),
-                "identified_locations": serialize_locations(enrich_locations),
             },
         )
 
