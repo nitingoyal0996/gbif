@@ -1,16 +1,40 @@
 import asyncio
 import requests
-from typing import Dict, Any, List
+from typing import Dict, Any
 
 from src.log import logger
+from ichatbio.agent_response import IChatBioAgentProcess
 
 
-def execute_sync_request(url: str) -> Dict[str, Any]:
-    response = requests.get(url, timeout=30)
-    response.raise_for_status()
-    result = response.json()
-    result["status_code"] = response.status_code
-    return result
+def execute_sync_request(url: str, max_retries: int = 3) -> Dict[str, Any]:
+    """Execute a sync request with retry logic for 500 status codes."""
+    for attempt in range(max_retries + 1):
+        try:
+            response = requests.get(url, timeout=30)
+
+            if response.status_code >= 500:
+                if attempt < max_retries:
+                    logger.warning(
+                        f"Got {response.status_code} status, retrying (attempt {attempt + 1}/{max_retries})"
+                    )
+                    continue
+                else:
+                    response.raise_for_status()
+
+            response.raise_for_status()
+            result = response.json()
+            result["status_code"] = response.status_code
+            return result
+
+        except requests.exceptions.HTTPError as e:
+            if attempt == max_retries or (e.response and e.response.status_code < 500):
+                raise
+            logger.warning(
+                f"Request failed: {e}, retrying (attempt {attempt + 1}/{max_retries})"
+            )
+
+    raise RuntimeError("Max retries exceeded")
+
 
 async def execute_request(url: str) -> Dict[str, Any]:
     loop = asyncio.get_event_loop()
@@ -32,23 +56,12 @@ async def execute_multiple_requests(urls: Dict[str, str]) -> Dict[str, Any]:
 
     return combined_results
 
-async def execute_request_with_retry(url: str, max_retries: int = 3) -> Dict[str, Any]:        
-    for attempt in range(max_retries + 1):
-        try:
-            return await execute_request(url)
-        except Exception as e:
-            if attempt == max_retries:
-                raise e
-            await asyncio.sleep(2 ** attempt)
-    raise RuntimeError("Max retries exceeded")
-
-
 async def fetch_gbif_data(url: str, timeout: int = 30) -> Dict[str, Any]:
     return await execute_request(url)
 
 
 async def execute_paginated_request(
-    search_params, api, total_limit: int
+    search_params, api, total_limit: int, process: IChatBioAgentProcess
 ) -> Dict[str, Any]:
     """
     Execute multiple paginated requests to fetch up to total_limit records.
@@ -56,8 +69,7 @@ async def execute_paginated_request(
     Returns:
         Combined response dictionary with all results and updated metadata
     """
-    batch_size = 300  # GBIF Limit per request
-    # Respect initial offset from search_params, default to 0
+    batch_size = 300
     initial_offset = search_params.offset or 0
     offset = initial_offset
     all_results = []
@@ -71,12 +83,10 @@ async def execute_paginated_request(
             update={"limit": this_limit, "offset": offset}
         )
         request_url = api.build_occurrence_search_url(paginated_params)
-        logger.info(f"Request URL: {request_url}")
+        await process.log(f"Request URL: {request_url}")
         try:
             response = await execute_request(request_url)
         except Exception as e:
-            # If this is not the first request and we already have some results,
-            # return what we have so far
             if all_results:
                 break
             raise e

@@ -12,17 +12,27 @@ from src.gbif.parser import parse
 from src.utils import _preprocess_user_request, serialize_organisms
 
 description = """
-**Use Case:** Use this entrypoint to get statistical counts and summaries of species themselves, based on criteria like taxonomic rank, conservation status, or habitat.
+**Species counts (taxonomic registry only — no location/time filters).**
 
-**Triggers On:** User requests asking "how many species," for a "count of species," a "breakdown of species by," or "statistics on" taxonomic groups.
+- **Route to this when**: The user wants counts of taxonomic entities (e.g., species/genera/families) based on taxonomy or status, independent of where/when they were observed. Examples include “how many species in Plantae?”, “number of endangered bird species worldwide,” “breakdown by rank.”
+- **Do NOT use when**: The prompt includes any location, date/time, geospatial constraint, or mentions occurrences/records/observations/collected/specimens. Those must go to occurrence-based counting.
 
-**Key Inputs:** One or more facet fields (e.g., rank, status, habitat).
+**Use Case:** Count GBIF name usages (taxonomic entities), not observations. Returns aggregated counts and facets over the taxonomic backbone.
 
-**Key Outputs:** Aggregated counts of species, not individual species data or their occurrences.
+**Triggers On (strong):** “how many species/genera/families,” “unique taxa (globally),” “by rank,” “by status,” “taxonomic breakdown,” “distinct taxa (no place/time).”
+**Avoid If Present:** “in/within/near [place],” country/geometry/GADM, year/date/temporal filters, “records/occurrences/observed/collected/specimens.”
 
-**Crucial Distinction:** This is for counting taxonomic entities (e.g., "how many species of birds are endangered?"), not their real-world observations.
+**Examples (choose THIS):**
+- “How many genera are in Plantae?”
+- “Number of endangered bird species worldwide.”
+- “Breakdown of species by rank within Mammalia.”
 
-Limitations: This entrypoint does not support searching species with location information. Occurrence API should be used instead.
+**Examples (**MUST** choose the OTHER entrypoint):**
+- “How many unique plant species in Gainesville?”
+- “Distinct species recorded in Kenya in 2020.”
+- “Top species by records near Paris.”
+
+Limitations: Cannot filter by location, time, or record-level fields; does not guarantee presence/observation. It summarizes taxonomic entities only.
 """
 
 entrypoint = AgentEntrypoint(

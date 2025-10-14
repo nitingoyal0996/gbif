@@ -31,13 +31,28 @@ from src.gadm.gadm import (
 
 
 description = """
-**Use Case:** Use this entrypoint to get statistical summaries, counts, and breakdowns of occurrence data using facets. This is the tool for aggregation, not for fetching individual records.
+**Occurrence-based counts and distincts (supports location/time/record filters).**
 
-**Triggers On:** User requests that may ask "how many," for a "count of," a "breakdown by," a "summary of," or the "distribution of" records.
+- **Route to this when**: The user asks for counts or breakdowns that depend on where/when things were observed or any record-level constraints. This includes “unique/distinct species in [place],” “counts by country/year,” “top taxa by records,” or any occurrence-level filter (e.g., basisOfRecord, dataset, collector, coordinates).
+- **Do NOT use when**: The user wants purely taxonomic counts that are independent of observations. Those go to species counts.
 
-**Key Inputs:** Requires one or more facet fields (e.g., country, year, basisOfRecord) to group the data. Can be combined with search filters like scientificName.
+**Use Case:** Aggregate GBIF occurrence records with facets; can compute distinct species (via `scientificName`/`TAXON_KEY` facets) under spatial/temporal/record filters.
 
-**Limitations:** This entrypoint returns aggregated counts, not a list of individual records.
+**Triggers On (strong):** Mentions of place (country/GADM/geometry), “in/within/near [place],” dates/years, “records/occurrences/observed/collected/specimens,” sampling/protocol/dataset/elevation.
+**Avoid If Present:** Purely taxonomic-only requests without any spatial/temporal/record context (route to species counts).
+
+**Examples (choose THIS):**
+- “How many unique plant species in Gainesville?”
+- “Distinct species recorded in Kenya in 2020.”
+- “Breakdown of occurrence records by basisOfRecord for birds in Brazil.”
+- “Top 10 species by occurrences within 50 km of Madrid.”
+
+**Examples (choose the OTHER entrypoint):**
+- “How many genera are in Plantae?”
+- “Number of endangered bird species worldwide.”
+- “Taxonomic breakdown of Mammalia by rank.”
+
+Limitations: Returns aggregated summaries over occurrence records; not the same as the taxonomic backbone counts. For full record details, use the record/search endpoints.
 """
 
 

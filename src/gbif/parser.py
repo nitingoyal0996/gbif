@@ -8,6 +8,8 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 from typing import Type, Optional
 
 from dotenv import load_dotenv
+from src.utils import UserRequestExpansion, IdentifiedOrganism
+from src.models.location import ResolvedLocation, GadmMatchType
 
 load_dotenv()
 
@@ -98,18 +100,49 @@ def get_system_prompt(entrypoint_id: str):
     return prompt
 
 
-def format_organisms_parsing_response(identified_organisms_response: Type[BaseModel]):
-    organisms_list = [
-        org.model_dump() for org in identified_organisms_response.organisms
-    ]
+def format_organisms_parsing_response(
+    organisms: list[IdentifiedOrganism],
+):
     message = f"""
-    Reasoning: {identified_organisms_response.reasoning}
-
     ```json
-    Organisms Identified: {json.dumps(organisms_list, indent=2)}
+    Organisms identified in the user request: {
+        json.dumps([
+            organism.model_dump(exclude_none=True, mode="json") 
+            for organism in organisms
+        ], indent=2)
+    }
     ```
     """
+    return message
 
+
+def format_locations_parsing_response(
+    locations: list[ResolvedLocation],
+):
+    display_locations = []
+    overall_statuses = []
+
+    for location in locations:
+        loc_dict = location.model_dump(exclude_none=True, mode="json")
+        match_type = loc_dict.get("match_type")
+        loc_dict.pop("query_trace", None)
+        if match_type == GadmMatchType.COMPLETE:
+            status_msg = "successfully resolved to gadm"
+        elif match_type == GadmMatchType.PARTIAL:
+            status_msg = "partially resolved to gadm"
+        else:
+            status_msg = "not resolved to gadm"
+        loc_dict["resolution_status"] = status_msg
+        overall_statuses.append(status_msg)
+        display_locations.append(loc_dict)
+
+    message = f"""
+    ```json
+    Locations identified in the user request: {
+        json.dumps(display_locations, indent=2)
+    }
+    ```
+    """
     return message
 
 
@@ -119,7 +152,7 @@ async def parse(
     request: str,
     entrypoint_id: str,
     parameters_model: Type[BaseModel],
-    identified_organisms_response: Optional[Type[BaseModel]] = None,
+    preprocess_information: Optional[UserRequestExpansion] = None,
 ) -> Type[BaseModel]:
     response_model = create_response_model(parameters_model)
 
@@ -134,15 +167,32 @@ async def parse(
             "content": get_system_prompt(entrypoint_id),
         }
     ]
-    if identified_organisms_response:
-        messages.append(
-            {
-                "role": "assistant",
-                "content": format_organisms_parsing_response(
-                    identified_organisms_response
-                ),
-            }
-        )
+    if preprocess_information:
+        if preprocess_information.reasoning:
+            messages.append(
+                {
+                    "role": "assistant",
+                    "content": f"Preprocessed user request: Reasoning: {preprocess_information.reasoning}",
+                }
+            )
+        if preprocess_information.organisms:
+            messages.append(
+                {
+                    "role": "assistant",
+                    "content": format_organisms_parsing_response(
+                        preprocess_information.organisms
+                    ),
+                }
+            )
+        if preprocess_information.locations:
+            messages.append(
+                {
+                    "role": "assistant",
+                    "content": format_locations_parsing_response(
+                        preprocess_information.locations
+                    ),
+                }
+            )
     messages.append(
         {
             "role": "user",

@@ -4,17 +4,9 @@ You **MUST** intelligently parse and format the user's natural language request 
 
 You **MUST** not make up any field names in `params`, this will fail the validation.
 
-You **MUST** use gadm parameters for location data whenever provided with the request. 
+You **MUST** prefer GADM filters **ONLY when available** (gadmGid > gadmLevel3Gid > gadmLevel2Gid > gadmLevel1Gid > gadmLevel0Gid). If a locality can't be resolved to GADM, use the most specific GADM level you have and add the locality to `q`. Don't invent geometry or coordinates.
 
 You **MUST** check for the user's intent requests “all” results (e.g., “all records”, “everything”, “entire dataset”), set `params.limit` to the maximum allowed for the endpoint.
-
-## Location fallback policy (when GADM cannot resolve a specific place)
-- Prefer GADM filters in this order: `gadmGid` > `gadmLevel3Gid` > `gadmLevel2Gid` > `gadmLevel1Gid` > `gadmLevel0Gid`.
-- If the requested locality (city/town) is not found at GADM level 3:
-  - Keep the most specific resolved GADM constraint you do have (e.g., `gadmLevel1Gid` for the state).
-  - Add `q: ['<verbatim locality from request>']` when the user supplied a locality name. Keep the GADM constraint to limit scope. 
-- If no GADM level can be resolved but a country/state is present, use text fields the user provided: Prefer `q`; use fields `locality` over `q` only when an exact locality match is requested by the user. Never invent coordinates or polygons. Do not use `geometry` or `geoDistance` unless the user provided coordinates/polygons.
-
 
 Work with the user request and **only ask for clarification and additional information if given is not sufficient for the response model parameters**.
 

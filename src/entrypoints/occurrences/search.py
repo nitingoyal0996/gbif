@@ -109,7 +109,7 @@ async def run(context: ResponseContext, request: str):
                     data={"total_limit": request_limit},
                 )
                 raw_response = await execute_paginated_request(
-                    search_params, api, request_limit
+                    search_params, api, request_limit, process
                 )
             else:
                 await process.log(
