@@ -1,6 +1,7 @@
-from pydantic import Field
+from pydantic import Field, field_validator
 from typing import List, Optional
 from uuid import UUID
+from datetime import datetime
 
 from .base import BaseModel
 from src.enums.common import (
@@ -286,32 +287,161 @@ class GeographicFilters(GadmFilters):
     )
 
 
-class TemporalFilters(BaseModel):
-    """Filters for occurrences by date/time (year, month, eventDate, lastInterpreted, etc.). There can be two
-    types of queries:
-    1. Single value queries: year='2020', month='5', day='1'
-    2. Multiple value queries: year=['2020','2021'], month=['5','6','7'], day=['1','2','3']
-    3. Range queries: For example, year='2020,2023', month='5,12', day='1,31'
-    4. Seasonal queries: For example, month=['5','6','7'] will return all records in the summer season.
+class DateFilters(BaseModel):
+    """
+    Date filters for occurrence searches.
+
+    The GBIF API supports three modes for each field:
+    1. Single value: year='2020', month='5', day='1'
+    2. Multiple discrete values: year=['2020','2021','2022'], month=['5','6','7']
+    3. Range query (exactly 2 values): year='2010,2020' or month='1,12'
+    4. Season query month=['12', '1', '2'] indicate winter season
     """
 
     year: Optional[List[str]] = Field(
         None,
-        description="The 4 digit year. A year of 98 will be interpreted as AD 98. Supports range queries using comma-separated values. For instance: year='2020,2023' will return all records from 2020 and 2023 (not including 2021 and 2022). To express a range 'from YYY1 to YYY3' or 'YYY1, YYY2, YYY3', use the format 'YYY1,YYY3'. It does not support * wildcard.",
-        examples=["2020", "2010,2020", "1998,2005"],
+        description="The 4 digit year. 98 will be interpreted as AD 98.",
+        examples=[["2020"], ["2010,2020"], ["2010", "2015", "2020"]],
     )
 
     month: Optional[List[str]] = Field(
         None,
-        description="The month of the year, starting with 1 for January. Supports range queries. For instance: month='5,12' will return all records from May to December.",
-        examples=["5", "1,12", "3,9"],
+        description="The month of the year (1-12).",
+        examples=[["5"], ["1,12"], ["5", "6", "7"]],
     )
 
-    day: Optional[List[int]] = Field(
+    day: Optional[List[str]] = Field(
         None,
-        description="The day of the month, starting with 1 for the first day. Supports range queries. For instance: day='1,31' will return all records from the first to the 31st day of the month.",
-        examples=["1", "1,31", "15"],
+        description="The day of the month (1-31).",
+        examples=[["1"], ["1,31"], ["1", "15", "30"]],
     )
+
+    # --- Field validators ---
+
+    @field_validator("year", "month", "day", mode="before")
+    def normalize_to_list(cls, v, info):
+        """Normalize input to list format."""
+        if v is None:
+            return None
+
+        if isinstance(v, str):
+            return [v]
+
+        if isinstance(v, int):
+            return [str(v)]
+
+        if isinstance(v, list):
+            return [str(item) if isinstance(item, int) else item for item in v]
+
+        raise TypeError(
+            f"{info.field_name}: expected str, int, or list. Got {type(v).__name__}."
+        )
+
+    @field_validator("year", "month", "day", mode="after")
+    def validate_format_and_values(cls, values, info):
+        """
+        Validates that:
+        1. All strings contain valid integers
+        2. Ranges have exactly 2 values (start,end) and are ascending
+        3. Values are within valid bounds
+        4. Cannot mix ranges with discrete values
+        """
+        if values is None:
+            return None
+
+        field_name = info.field_name
+
+        # Parse each value and categorize as single or range
+        parsed_items = []
+
+        for raw_value in values:
+            if not isinstance(raw_value, str):
+                raise TypeError(
+                    f"{field_name}: all items must be strings. Got {type(raw_value).__name__} for value '{raw_value}'."
+                )
+
+            # Split by comma to check if it's a range
+            parts = [p.strip() for p in raw_value.split(",")]
+            parts = [p for p in parts if p]
+
+            if len(parts) == 0:
+                raise ValueError(f"{field_name}: empty string is not allowed.")
+
+            if len(parts) > 2:
+                raise ValueError(
+                    f"{field_name}: invalid range format '{raw_value}'. "
+                    f"A range must have exactly 2 values separated by comma, e.g., '2010,2020'. "
+                    f"For multiple discrete values, use separate strings: ['2010','2015','2020']."
+                )
+
+            # Validate all parts are integers
+            try:
+                nums = [int(p) for p in parts]
+            except ValueError as e:
+                raise ValueError(
+                    f"{field_name}: value '{raw_value}' must contain only integers. "
+                    f"Examples: '2020' (single), '2010,2020' (range), ['2010','2015','2020'] (discrete values)."
+                )
+
+            # Validate range is ascending
+            if len(nums) == 2:
+                if nums[0] > nums[1]:
+                    raise ValueError(
+                        f"{field_name}: range must be ascending (start <= end). "
+                        f"Got '{raw_value}' where {nums[0]} > {nums[1]}."
+                    )
+                if nums[0] == nums[1]:
+                    raise ValueError(
+                        f"{field_name}: range start and end cannot be the same. "
+                        f"Got '{raw_value}'. Use a single value '{nums[0]}' instead."
+                    )
+
+            # Validate bounds based on field type
+            for n in nums:
+                if field_name == "month":
+                    if not (1 <= n <= 12):
+                        raise ValueError(
+                            f"{field_name}: months must be between 1 and 12. Got {n} in '{raw_value}'."
+                        )
+                elif field_name == "day":
+                    if not (1 <= n <= 31):
+                        raise ValueError(
+                            f"{field_name}: days must be between 1 and 31. Got {n} in '{raw_value}'."
+                        )
+                elif field_name == "year":
+                    current_year = datetime.now().year
+                    if not (0 <= n <= current_year):
+                        raise ValueError(
+                            f"{field_name}: years must be between 0 and {current_year}. Got {n} in '{raw_value}'."
+                        )
+
+            parsed_items.append((raw_value, nums))
+
+        # Check for mixing ranges with discrete values
+        has_range = any(len(nums) == 2 for _, nums in parsed_items)
+        has_discrete = any(len(nums) == 1 for _, nums in parsed_items)
+
+        if has_range and has_discrete:
+            range_vals = [orig for orig, nums in parsed_items if len(nums) == 2]
+            discrete_vals = [orig for orig, nums in parsed_items if len(nums) == 1]
+            raise ValueError(
+                f"{field_name}: cannot mix range queries with discrete values. "
+                f"Found range(s): {range_vals} and discrete value(s): {discrete_vals}. "
+                f"Use either a range OR discrete values, not both."
+            )
+
+        # Check for multiple ranges
+        if has_range and len([1 for _, nums in parsed_items if len(nums) == 2]) > 1:
+            range_vals = [orig for orig, nums in parsed_items if len(nums) == 2]
+            raise ValueError(
+                f"{field_name}: only one range is allowed per field. "
+                f"Found multiple ranges: {range_vals}. "
+                f"Combine into a single range or use discrete values."
+            )
+
+
+class TemporalFilters(DateFilters):
+    """Filters for occurrences by date/time (year, month, eventDate, lastInterpreted, etc.)."""
 
     eventDate: Optional[List[str]] = Field(
         None,

@@ -196,7 +196,7 @@ async def parse(
     messages.append(
         {
             "role": "user",
-            "content": f"Generate GBIF Request Parameters for the following user request: {request}",
+            "content": f"Today's date is {CURRENT_DATE}. Generate GBIF Request Parameters for the following user request: {request}",
         }
     )
 
