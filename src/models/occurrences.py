@@ -4,6 +4,7 @@ from uuid import UUID
 from datetime import datetime
 
 from .base import BaseModel
+from src.log import logger
 from src.enums.common import (
     ContinentEnum,
     LicenseEnum,
@@ -287,16 +288,8 @@ class GeographicFilters(GadmFilters):
     )
 
 
-class DateFilters(BaseModel):
-    """
-    Date filters for occurrence searches.
-
-    The GBIF API supports three modes for each field:
-    1. Single value: year='2020', month='5', day='1'
-    2. Multiple discrete values: year=['2020','2021','2022'], month=['5','6','7']
-    3. Range query (exactly 2 values): year='2010,2020' or month='1,12'
-    4. Season query month=['12', '1', '2'] indicate winter season
-    """
+class TemporalFilters(BaseModel):
+    """Filters for occurrences by date/time (year, month, eventDate, lastInterpreted, etc.)."""
 
     year: Optional[List[str]] = Field(
         None,
@@ -306,7 +299,7 @@ class DateFilters(BaseModel):
 
     month: Optional[List[str]] = Field(
         None,
-        description="The month of the year (1-12).",
+        description="The month of the year as numeric value. Map the month name to the numeric value.",
         examples=[["5"], ["1,12"], ["5", "6", "7"]],
     )
 
@@ -316,8 +309,53 @@ class DateFilters(BaseModel):
         examples=[["1"], ["1,31"], ["1", "15", "30"]],
     )
 
-    # --- Field validators ---
+    eventDate: Optional[List[str]] = Field(
+        None,
+        description="Occurrence date in ISO 8601 format: yyyy, yyyy-MM or yyyy-MM-dd.\n\n*Parameter may be repeated or a range.",
+        examples=[["2020"], ["2020-01", "2020-12"], ["2000,2001-06-30"]],
+    )
 
+    eventId: Optional[List[str]] = Field(
+        None,
+        description="An identifier for the information associated with a sampling event. Parameter may be repeated.",
+        examples=[["A 123"]],
+    )
+
+    parentEventId: Optional[List[str]] = Field(
+        None,
+        description="An identifier for the information associated with a parent sampling event. Parameter may be repeated.",
+        examples=[["A 123"]],
+    )
+
+    startDayOfYear: Optional[List[int]] = Field(
+        None,
+        description="The earliest integer day of the year on which the event occurred. Parameter may be repeated.",
+        examples=[[5]],
+    )
+
+    endDayOfYear: Optional[List[int]] = Field(
+        None,
+        description="The latest integer day of the year on which the event occurred. Parameter may be repeated.",
+        examples=[[6]],
+    )
+
+    lastInterpreted: Optional[List[str]] = Field(
+        None,
+        description="""This date the record was last modified in GBIF, in ISO 8601 format: yyyy, yyyy-MM, yyyy-MM-dd, or MM-dd.
+        
+        Note that this is the date the record was last changed in GBIF, not necessarily the date the record was first/last changed by the publisher. Data is re-interpreted when we change the taxonomic backbone, geographic data sources, or interpretation processes.
+        
+        Parameter may be repeated or a range.""",
+        examples=[["2023-02"]],
+    )
+
+    modified: Optional[List[str]] = Field(
+        None,
+        description="The most recent date-time on which the occurrence was changed, according to the publisher. Parameter may be repeated or a range.",
+        examples=[["2023-02-20"]],
+    )
+
+    # --- Field validators ---
     @field_validator("year", "month", "day", mode="before")
     def normalize_to_list(cls, v, info):
         """Normalize input to list format."""
@@ -346,6 +384,8 @@ class DateFilters(BaseModel):
         3. Values are within valid bounds
         4. Cannot mix ranges with discrete values
         """
+        logger.info(f"Validate:: field={info.field_name} | input_values={values}")
+
         if values is None:
             return None
 
@@ -355,33 +395,49 @@ class DateFilters(BaseModel):
         parsed_items = []
 
         for raw_value in values:
+            logger.info(
+                f"Validate:: field={field_name} | processing raw_value='{raw_value}' type={type(raw_value).__name__}"
+            )
+
             if not isinstance(raw_value, str):
-                raise TypeError(
-                    f"{field_name}: all items must be strings. Got {type(raw_value).__name__} for value '{raw_value}'."
-                )
+                error_msg = f"{field_name}: all items must be strings. Got {type(raw_value).__name__} for value '{raw_value}'."
+                logger.error(f"Validate:: field={field_name} | ERROR: {error_msg}")
+                raise TypeError(error_msg)
 
             # Split by comma to check if it's a range
             parts = [p.strip() for p in raw_value.split(",")]
             parts = [p for p in parts if p]
+            logger.info(f"Validate:: field={field_name} | split into parts: {parts}")
 
             if len(parts) == 0:
-                raise ValueError(f"{field_name}: empty string is not allowed.")
+                error_msg = f"{field_name}: empty string is not allowed."
+                logger.error(f"Validate:: field={field_name} | ERROR: {error_msg}")
+                raise ValueError(error_msg)
 
             if len(parts) > 2:
-                raise ValueError(
+                error_msg = (
                     f"{field_name}: invalid range format '{raw_value}'. "
                     f"A range must have exactly 2 values separated by comma, e.g., '2010,2020'. "
                     f"For multiple discrete values, use separate strings: ['2010','2015','2020']."
                 )
+                logger.error(f"Validate:: field={field_name} | ERROR: {error_msg}")
+                raise ValueError(error_msg)
 
             # Validate all parts are integers
             try:
                 nums = [int(p) for p in parts]
+                logger.info(
+                    f"Validate:: field={field_name} | successfully converted '{raw_value}' to integers: {nums}"
+                )
             except ValueError as e:
-                raise ValueError(
+                error_msg = (
                     f"{field_name}: value '{raw_value}' must contain only integers. "
                     f"Examples: '2020' (single), '2010,2020' (range), ['2010','2015','2020'] (discrete values)."
                 )
+                logger.error(
+                    f"Validate:: field={field_name} | ERROR converting '{raw_value}' to int: {error_msg}"
+                )
+                raise ValueError(error_msg)
 
             # Validate range is ascending
             if len(nums) == 2:
@@ -430,64 +486,7 @@ class DateFilters(BaseModel):
                 f"Use either a range OR discrete values, not both."
             )
 
-        # Check for multiple ranges
-        if has_range and len([1 for _, nums in parsed_items if len(nums) == 2]) > 1:
-            range_vals = [orig for orig, nums in parsed_items if len(nums) == 2]
-            raise ValueError(
-                f"{field_name}: only one range is allowed per field. "
-                f"Found multiple ranges: {range_vals}. "
-                f"Combine into a single range or use discrete values."
-            )
-
-
-class TemporalFilters(DateFilters):
-    """Filters for occurrences by date/time (year, month, eventDate, lastInterpreted, etc.)."""
-
-    eventDate: Optional[List[str]] = Field(
-        None,
-        description="Occurrence date in ISO 8601 format: yyyy, yyyy-MM or yyyy-MM-dd.\n\n*Parameter may be repeated or a range.",
-        examples=[["2020"], ["2020-01", "2020-12"], ["2000,2001-06-30"]],
-    )
-
-    eventId: Optional[List[str]] = Field(
-        None,
-        description="An identifier for the information associated with a sampling event. Parameter may be repeated.",
-        examples=[["A 123"]],
-    )
-
-    parentEventId: Optional[List[str]] = Field(
-        None,
-        description="An identifier for the information associated with a parent sampling event. Parameter may be repeated.",
-        examples=[["A 123"]],
-    )
-
-    startDayOfYear: Optional[List[int]] = Field(
-        None,
-        description="The earliest integer day of the year on which the event occurred. Parameter may be repeated.",
-        examples=[[5]],
-    )
-
-    endDayOfYear: Optional[List[int]] = Field(
-        None,
-        description="The latest integer day of the year on which the event occurred. Parameter may be repeated.",
-        examples=[[6]],
-    )
-
-    lastInterpreted: Optional[List[str]] = Field(
-        None,
-        description="""This date the record was last modified in GBIF, in ISO 8601 format: yyyy, yyyy-MM, yyyy-MM-dd, or MM-dd.
-        
-        Note that this is the date the record was last changed in GBIF, not necessarily the date the record was first/last changed by the publisher. Data is re-interpreted when we change the taxonomic backbone, geographic data sources, or interpretation processes.
-        
-        Parameter may be repeated or a range.""",
-        examples=[["2023-02"]],
-    )
-
-    modified: Optional[List[str]] = Field(
-        None,
-        description="The most recent date-time on which the occurrence was changed, according to the publisher. Parameter may be repeated or a range.",
-        examples=[["2023-02-20"]],
-    )
+        return values
 
 
 class RecordIdentifiers(BaseModel):
