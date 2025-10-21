@@ -287,21 +287,27 @@ class GeographicFilters(GadmFilters):
 
 
 class TemporalFilters(BaseModel):
-    """Filters for occurrences by date/time (year, month, eventDate, lastInterpreted, etc.)."""
+    """Filters for occurrences by date/time (year, month, eventDate, lastInterpreted, etc.). There can be two
+    types of queries:
+    1. Single value queries: year='2020', month='5', day='1'
+    2. Multiple value queries: year=['2020','2021'], month=['5','6','7'], day=['1','2','3']
+    3. Range queries: For example, year='2020,2023', month='5,12', day='1,31'
+    4. Seasonal queries: For example, month=['5','6','7'] will return all records in the summer season.
+    """
 
-    year: Optional[str] = Field(
+    year: Optional[List[str]] = Field(
         None,
         description="The 4 digit year. A year of 98 will be interpreted as AD 98. Supports range queries using comma-separated values. For instance: year='2020,2023' will return all records from 2020 and 2023 (not including 2021 and 2022). To express a range 'from YYY1 to YYY3' or 'YYY1, YYY2, YYY3', use the format 'YYY1,YYY3'. It does not support * wildcard.",
         examples=["2020", "2010,2020", "1998,2005"],
     )
 
-    month: Optional[str] = Field(
+    month: Optional[List[str]] = Field(
         None,
         description="The month of the year, starting with 1 for January. Supports range queries. For instance: month='5,12' will return all records from May to December.",
         examples=["5", "1,12", "3,9"],
     )
 
-    day: Optional[int] = Field(
+    day: Optional[List[int]] = Field(
         None,
         description="The day of the month, starting with 1 for the first day. Supports range queries. For instance: day='1,31' will return all records from the first to the 31st day of the month.",
         examples=["1", "1,31", "15"],
