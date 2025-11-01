@@ -16,7 +16,9 @@ from src.utils import (
     _generate_resolution_message,
     _preprocess_user_request,
     serialize_organisms,
+    serialize_entities,
     serialize_for_log,
+    NamedEntityType,
 )
 from src.gbif.parser import parse
 from src.gbif.resolve_parameters import (
@@ -27,6 +29,7 @@ from src.gadm.gadm import (
     map_locations_to_gadm,
     serialize_locations,
 )
+from src.bionomia import normalize_name
 
 
 description = """
@@ -59,8 +62,22 @@ async def run(context: ResponseContext, request: str):
         await process.log(f"Request recieved: {request} \n\nParsing request...")
 
         expansion_response = await _preprocess_user_request(request)
-        enrich_locations = await map_locations_to_gadm(expansion_response.locations)
-        expandedRequest = f"User request: {request} Identified organisms in the request: {json.dumps(serialize_organisms(expansion_response.organisms))} Identified locations in the request: {json.dumps(serialize_locations(enrich_locations))}"
+        enrich_locations = []
+        if expansion_response.locations:
+            enrich_locations = await map_locations_to_gadm(expansion_response.locations)
+        if expansion_response.entities:
+            for entity in expansion_response.entities:
+                if entity.type is NamedEntityType.PERSON:
+                    result = normalize_name(entity.value)
+                    await process.log(
+                        f"Bionomia search result for {entity.value}",
+                        data=result,
+                    )
+                    if result.get("status") == "found":
+                        entity.alternate_names = result.get("all_names", []) or []
+                    else:
+                        continue
+        expandedRequest = f"User request: {request} Identified organisms in the request: {json.dumps(serialize_organisms(expansion_response.organisms))} Identified locations in the request: {json.dumps(serialize_locations(enrich_locations))} Identified entities in the request: {json.dumps(serialize_entities(expansion_response.entities), indent=2)}"
         await process.log(
             f"Expanded request",
             data={
@@ -69,6 +86,7 @@ async def run(context: ResponseContext, request: str):
                     expansion_response.organisms
                 ),
                 "identified_locations": serialize_locations(enrich_locations),
+                "identified_entities": serialize_entities(expansion_response.entities),
             },
         )
 

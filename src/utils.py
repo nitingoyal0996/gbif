@@ -1,10 +1,37 @@
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, model_validator, ConfigDict
 from typing import Optional
 import dataclasses
-import instructor
 import json
 from src.log import logger
 from src.models.location import Location
+from src.instructor_client import get_client
+from enum import Enum
+
+
+class NamedEntityType(Enum):
+    PERSON = "person"
+    PUBLISHING_ORGANIZATION = "publishing_organization"
+    OTHER = "other"
+
+
+class NamedEntity(BaseModel):
+    """
+    A named entity is a person, organization, or other entity that is found in the user request.
+    """
+
+    model_config = ConfigDict(extra="allow")
+    type: NamedEntityType
+    value: str = Field(description="The value of the entity")
+    type_if_other: str = Field(description="The type of the entity if it is OTHER")
+
+    @model_validator(mode="after")
+    def validate_named_entity_type_and_value(self):
+        if self.type == NamedEntityType.OTHER:
+            if not self.type_if_other:
+                raise ValueError("type_if_other is required if type is OTHER")
+            if not isinstance(self.value, str):
+                raise ValueError("value must be a string if type is OTHER")
+        return self
 
 
 class IdentifiedOrganism(BaseModel):
@@ -32,6 +59,10 @@ class UserRequestExpansion(BaseModel):
     )
     locations: list[Location] = Field(
         description="All location references found with their types and names",
+        default_factory=list,
+    )
+    entities: list[NamedEntity] = Field(
+        description="All named entities found with their types and values",
         default_factory=list,
     )
 
@@ -150,6 +181,10 @@ async def _generate_artifact_description(details: str) -> str:
 
 def serialize_organisms(organisms: list) -> list:
     return [org.model_dump(exclude_none=True, mode="json") for org in organisms]
+
+
+def serialize_entities(entities: list) -> list:
+    return [entity.model_dump(exclude_none=True, mode="json") for entity in entities]
 
 
 async def _preprocess_user_request(user_request: str):
