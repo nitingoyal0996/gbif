@@ -45,6 +45,14 @@ async def run(context: ResponseContext, request: str):
         await process.log(f"Request received: {request} \n\nParsing request...")
 
         expansion_response = await _preprocess_user_request(request)
+        if expansion_response.locations:
+            await process.log(
+                "Warning: Request include locations. This entrypoint cannot search for species records with specific locations."
+            )
+            await context.reply(
+                "Warning: Request include locations. This entrypoint cannot search for species records with specific locations. Please use occurrence search entrypoint instead."
+            )
+            return
         expandedRequest = f"User request: {request} Identified organisms in the request: {json.dumps(serialize_organisms(expansion_response.organisms))}"
         await process.log(
             f"Expanded request",

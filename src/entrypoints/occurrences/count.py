@@ -2,7 +2,7 @@ import uuid
 import json
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, List
 from ichatbio.agent_response import ResponseContext, IChatBioAgentProcess
 from ichatbio.types import AgentEntrypoint
 
@@ -17,6 +17,7 @@ from src.utils import (
     _generate_resolution_message,
     serialize_organisms,
     serialize_for_log,
+    IdentifiedOrganism,
 )
 from src.gbif.parser import parse
 from src.gbif.resolve_parameters import (
@@ -107,7 +108,13 @@ async def run(context: ResponseContext, request: str):
         await process.log(f"Parameter parsing plan", data={"plan": response.plan})
         api = GbifApi()
 
-        param_result = await _get_parameters(response, expandedRequest, api, process)
+        param_result = await _get_parameters(
+            response,
+            request=expandedRequest,
+            organisms=expansion_response.organisms,
+            api=api,
+            process=process,
+        )
 
         await process.log(
             f"Search API parameters results -",
@@ -200,8 +207,9 @@ def _generate_response_summary(page_info: dict, portal_url: str) -> str:
 async def _get_parameters(
     response: GBIFOccurrenceFacetsParams,
     request: str,
-    api: GbifApi,
-    process: IChatBioAgentProcess,
+    organisms: List[IdentifiedOrganism],
+    process: IChatBioAgentProcess = None,
+    api: GbifApi = None,
 ) -> ParameterResolutionResult:
     """
     Executes the occurrence facets entrypoint. Counts occurrence records using the provided
@@ -245,12 +253,8 @@ async def _get_parameters(
     # Check if we need to resolve scientific names (before creating the final params)
     base_params = response.params.model_copy(update=params_updates)
     if getattr(base_params, "scientificName", None):
-        await process.log(
-            f"Resolving {base_params.scientificName} scientific names to taxon keys..."
-        )
-        taxon_keys = await resolve_names_to_taxonkeys(
-            api, base_params.scientificName, process
-        )
+        await process.log(f"Resolving {len(organisms)} organisms to taxon keys...")
+        taxon_keys = await resolve_names_to_taxonkeys(api, organisms, process)
         if taxon_keys:
             params_updates.update(
                 {
@@ -271,6 +275,7 @@ async def _get_parameters(
         clarification_needed=clarification_needed,
         clarification_message=clarification_message,
     )
+
 
 async def _enrich_facets_with_names(
     api: GbifApi, process: IChatBioAgentProcess, facets: list

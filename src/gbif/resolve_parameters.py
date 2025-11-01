@@ -2,6 +2,9 @@ from src.gbif.api import GbifApi
 from src.gbif.fetch import execute_request, execute_multiple_requests
 from ichatbio.agent_response import IChatBioAgentProcess
 
+from src.utils import IdentifiedOrganism
+from src.models.entrypoints import GBIFSpeciesNameMatchParams
+
 """
 Module for resolving taxonomic names to GBIF keys automatically.
 """
@@ -143,7 +146,8 @@ async def resolve_name_to_key(
     api: GbifApi, process: IChatBioAgentProcess, name: str, expected_rank: str
 ) -> Optional[int]:
     try:
-        url = api.build_species_match_url(name)
+        params = GBIFSpeciesNameMatchParams(scientificName=name)
+        url = api.build_species_match_url(params)
         await process.log(f"Attempting to resolve {expected_rank} names: {name}", data={'url': url})
         result = await execute_request(url)
         await process.create_artifact(
@@ -206,7 +210,7 @@ async def resolve_pending_search_parameters(
 
 
 async def resolve_names_to_taxonkeys(
-    api: GbifApi, scientific_names: list, process: IChatBioAgentProcess
+    api: GbifApi, organisms: List[IdentifiedOrganism], process: IChatBioAgentProcess
 ) -> list:
     """
     Resolve scientific names to GBIF taxon keys using the species match API.
@@ -216,20 +220,76 @@ async def resolve_names_to_taxonkeys(
         Only successfully resolved names will have their taxon keys included in the result.
         Each API call generates an artifact for tracking purposes.
     """
-    if not scientific_names:
+    if not organisms:
         return []
 
     taxon_keys = []
 
-    for name in scientific_names:
+    for organism in organisms:
+        await process.log(f"Resolving organism: {organism}")
+        data = organism.model_dump(exclude_none=True, mode="json")
         result = None
+        url = None
+        name = data.get("scientific_name", None)
+        rank = data.get("taxonomic_rank", None)
+        if not name:
+            await process.log(f"No scientific name found for organism: {data}")
+            continue
         try:
-            # Use the species match endpoint to resolve the name
-            url = api.build_species_match_url(name)
-            await process.log(f"URL for name match: {url}")
-            result = await execute_request(url)
+            # Map rank names to GBIFSpeciesNameMatchParams parameter names
+            rank_param_map = {
+                "family": "family",
+                "genus": "genus",
+                "species": "scientificName",
+                "order": "order",
+                "class": "class",
+                "phylum": "phylum",
+                "kingdom": "kingdom",
+            }
+            params_dict = {}
+            rank_field = (
+                rank_param_map.get(rank.lower()) if isinstance(rank, str) else None
+            )
+            if rank_field:
+                params_dict[rank_field] = name
+                params = GBIFSpeciesNameMatchParams(**params_dict)
+                url = api.build_species_match_url(params)
+                await process.log(
+                    f"Attempting to resolve {name} with rank {rank_field}",
+                    data={"url": url},
+                )
+                result = await execute_request(url)
+            elif not rank_field or not (
+                result.get("usage") and result.get("usage", {}).get("key")
+            ):
+                params = GBIFSpeciesNameMatchParams(scientificName=name)
+                url = api.build_species_match_url(params)
+                await process.log(
+                    f"Did not find a match for {name} with rank {rank_field}, attempting to resolve with scientificName",
+                    data={"url": url},
+                )
+                result = await execute_request(url)
+            elif not (result.get("usage") and result.get("usage", {}).get("key")):
+                params = GBIFSpeciesNameMatchParams(scientificName=name, verbose=True)
+                url = api.build_species_match_url(params)
+                await process.log(
+                    f"No match found for '{name}', trying alternate names with verbose=rue",
+                    data={"url": url},
+                )
+                data = await execute_request(url)
+                alternatives = data.get("alternatives", [])
+                if alternatives:
+                    await process.log(
+                        f"Found {len(alternatives)} alternatives for '{name}'"
+                    )
+                    if len(alternatives) > 1:
+                        await process.log(f"Using first alternative for '{name}'")
+                        result = alternatives[0]
+                    else:
+                        await process.log(f"Using only alternative for '{name}'")
+                        result = alternatives[0]
 
-            # Check if we have a successful match in the 'usage' field
+            # generate artifact for the response
             if result.get("usage") and result.get("usage", {}).get("key"):
                 taxon_key = result["usage"]["key"]
                 taxon_keys.append(taxon_key)
@@ -241,14 +301,16 @@ async def resolve_names_to_taxonkeys(
                         "data_source": "GBIF Species Match",
                     },
                 )
+                continue
             else:
                 await process.log(
-                    f"No match found for '{name}'",
+                    f"No match or alternatives found for '{name}'",
                     data={
                         "data_source": f"GBIF Species Match results for: {name}",
                         "api_url": url,
                     },
                 )
+                continue
 
         except Exception as e:
             await process.log(
@@ -260,9 +322,7 @@ async def resolve_names_to_taxonkeys(
             )
             continue
 
-    await process.log(
-        f"Resolved {len(taxon_keys)} out of {len(scientific_names)} names."
-    )
+    await process.log(f"Resolved {len(taxon_keys)} out of {len(organisms)} names.")
     return taxon_keys
 
 

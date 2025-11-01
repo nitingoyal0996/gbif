@@ -442,3 +442,134 @@ class GBIFDatasetSearchParams(ProductionBaseModel):
         description="Determines the offset for the search results. A limit of 20 and offset of 40 will get the third page of 20 results.",
         examples=[0, 20, 40],
     )
+
+
+class GBIFSpeciesNameMatchParams(ProductionBaseModel):
+    """
+    Fuzzy matches scientific names against the Taxonomy with the optional classification provided. If a classification is provided and strict is not set to true, the default matching will also try to match against these if no direct match is found for the name parameter alone.
+
+    Additionally, a lookup may be performed by providing the usageKey which will short-circuit the name-based matching and ONLY use the given key, either finding the concept or returning no match.
+    """
+
+    usageKey: Optional[int] = Field(
+        None,
+        description="The usage key to look up.",
+        examples=[5231190],
+    )
+
+    taxonID: Optional[int] = Field(
+        None,
+        description="The taxon ID to match.",
+        examples=[2476674],
+    )
+
+    taxonConceptID: Optional[int] = Field(
+        None,
+        description="The taxon concept ID to match.",
+        examples=[2476674],
+    )
+
+    scientificNameID: Optional[int] = Field(
+        None,
+        description="The scientific name ID to match.",
+        examples=[2476674],
+    )
+
+    scientificName: Optional[str] = Field(
+        None,
+        description="The scientific name to match.",
+        examples=["Panthera onca", "jaguar", "Quercus robur", "oak tree"],
+    )
+
+    scientificNameAuthorship: Optional[str] = Field(
+        None,
+        description="The scientific name authorship to match.",
+        examples=["Panthera onca", "jaguar", "Quercus robur", "oak tree"],
+    )
+
+    verbatimTaxonRank: Optional[str] = Field(
+        None,
+        description="The verbatim taxonomic rank to match.",
+        examples=["Panthera onca", "jaguar", "Quercus robur", "oak tree"],
+    )
+
+    genericName: Optional[str] = Field(
+        None,
+        description="The generic name to match.",
+        examples=["Panthera onca", "jaguar", "Quercus robur", "oak tree"],
+    )
+
+    specificEpithet: Optional[str] = Field(
+        None,
+        description="The specific epithet to match.",
+        examples=["Panthera onca", "jaguar", "Quercus robur", "oak tree"],
+    )
+
+    infraspecificEpithet: Optional[str] = Field(
+        None,
+        description="The infraspecific epithet to match.",
+        examples=["Panthera onca", "jaguar", "Quercus robur", "oak tree"],
+    )
+
+    exclude: Optional[List[int]] = Field(
+        None,
+        description="The exclude list to match.",
+        examples=[2476674],
+    )
+
+    strict: Optional[bool] = Field(
+        None,
+        description="The strict flag to match.",
+        examples=[True, False],
+    )
+
+    verbose: Optional[bool] = Field(
+        None,
+        description="The verbose flag to match.",
+        examples=[True, False],
+    )
+
+    taxonomic_class: Optional[str] = Field(
+        None,
+        description="The class to match.",
+        examples=["Panthera onca", "jaguar", "Quercus robur", "oak tree"],
+    )
+
+    rank: Optional[TaxonomicRankEnum] = Field(
+        None,
+        description="The rank to match.",
+        examples=[
+            TaxonomicRankEnum.SPECIES,
+            TaxonomicRankEnum.GENUS,
+        ],
+    )
+
+    kingdom: Optional[str] = Field(
+        None,
+        description="The kingdom to match.",
+        examples=["Panthera onca", "jaguar", "Quercus robur", "oak tree"],
+    )
+
+    phylum: Optional[str] = Field(
+        None,
+        description="The phylum to match.",
+        examples=["Panthera onca", "jaguar", "Quercus robur", "oak tree"],
+    )
+
+    order: Optional[str] = Field(
+        None,
+        description="The order to match.",
+        examples=["Panthera onca", "jaguar", "Quercus robur", "oak tree"],
+    )
+
+    family: Optional[str] = Field(
+        None,
+        description="The family to match.",
+        examples=["Panthera onca", "jaguar", "Quercus robur", "oak tree"],
+    )
+
+    genus: Optional[str] = Field(
+        None,
+        description="The genus to match.",
+        examples=["Panthera onca", "jaguar", "Quercus robur", "oak tree"],
+    )

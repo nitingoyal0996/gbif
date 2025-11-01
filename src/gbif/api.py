@@ -8,6 +8,7 @@ from urllib.parse import urlencode
 from src.models.entrypoints import (
     GBIFOccurrenceSearchParams,
     GBIFOccurrenceFacetsParams,
+    GBIFSpeciesNameMatchParams,
     GBIFSpeciesSearchParams,
     GBIFSpeciesFacetsParams,
     GBIFSpeciesTaxonomicParams,
@@ -95,10 +96,10 @@ class GbifApi:
             )
         return urls
 
-    def build_species_match_url(self, scientific_name: str) -> str:
+    def build_species_match_url(self, params: GBIFSpeciesNameMatchParams) -> str:
         base_url = f"{self.v2_base_url}/species/match"
-        params = {"scientificName": scientific_name}
-        query_string = urlencode(params, doseq=True)
+        api_params = self._convert_to_api_params(params)
+        query_string = urlencode(api_params, doseq=True)
         return f"{base_url}?{query_string}"
 
     def build_occurrence_by_id_url(self, params: GBIFOccurrenceByIdParams) -> str:

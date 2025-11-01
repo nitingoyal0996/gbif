@@ -1,11 +1,11 @@
 import uuid
 import json
-import random
-
+from typing import List
 from dataclasses import dataclass
 from ichatbio.agent_response import ResponseContext, IChatBioAgentProcess
 from ichatbio.types import AgentEntrypoint
 
+from src.utils import IdentifiedOrganism
 from src.gbif.api import GbifApi
 from src.gbif.fetch import execute_request, execute_paginated_request
 from src.models.entrypoints import GBIFOccurrenceSearchParams
@@ -82,7 +82,13 @@ async def run(context: ResponseContext, request: str):
         logger.info(f"Parameter parsing plan: {response}")
         api = GbifApi()
 
-        param_result = await _get_parameters(response, expandedRequest, api, process)
+        param_result = await _get_parameters(
+            response,
+            request=expandedRequest,
+            organisms=expansion_response.organisms,
+            api=api,
+            process=process,
+        )
 
         if param_result.clarification_needed:
             await context.reply(param_result.clarification_message)
@@ -209,9 +215,10 @@ class ParameterResolutionResult:
 
 async def _get_parameters(
     response: GBIFOccurrenceSearchParams,
-    request: str,
-    api: GbifApi,
-    process: IChatBioAgentProcess,
+    organisms: List[IdentifiedOrganism] = None,
+    api: GbifApi = None,
+    process: IChatBioAgentProcess = None,
+    request: str = None,
 ) -> ParameterResolutionResult:
     """
     Executes the occurrence search entrypoint. Searches for occurrence records using the provided
@@ -254,12 +261,8 @@ async def _get_parameters(
     # Check if we need to resolve scientific names (before creating the final params)
     base_params = response.params.model_copy(update=params_updates)
     if getattr(base_params, "scientificName", None):
-        await process.log(
-            f"Resolving {base_params.scientificName} scientific names to taxon keys..."
-        )
-        taxon_keys = await resolve_names_to_taxonkeys(
-            api, base_params.scientificName, process
-        )
+        await process.log(f"Resolving {len(organisms)} organisms to taxon keys...")
+        taxon_keys = await resolve_names_to_taxonkeys(api, organisms, process)
         if taxon_keys:
             params_updates.update(
                 {
