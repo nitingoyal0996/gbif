@@ -82,10 +82,7 @@ async def _generate_resolution_message(
                 "content": f"Generate the message for:\nUser request: {user_request}\nParsed Response: {json.dumps(serialize_for_log(response))}\nResolved fields: {resolved_fields}\nUnresolved fields: {unresolved_fields}.",
             },
         ]
-        client = instructor.from_provider(
-            "openai/gpt-4.1-nano",
-            async_client=True,
-        )
+        client = await get_client()
         response = await client.chat.completions.create(
             messages=messages,
             response_model=ResolutionMessage,
@@ -135,10 +132,7 @@ async def _generate_artifact_description(details: str) -> str:
                 "content": f"Generate a clear, natural-language description for this GBIF API request: \nDetails: {details}",
             },
         ]
-        client = instructor.from_provider(
-            model="openai/gpt-4.1-nano",
-            async_client=True,
-        )
+        client = await get_client()
         response = await client.chat.completions.create(
             messages=messages,
             response_model=ArtifactDescription,
@@ -171,11 +165,7 @@ async def _preprocess_user_request(user_request: str):
         {"role": "user", "content": f"User request: {user_request}"},
     ]
 
-    client = instructor.from_provider(
-        model="openai/gpt-4.1-unfiltered",
-        async_client=True,
-        temperature=0.0,
-    )
+    client = await get_client()
 
     response = await client.chat.completions.create(
         messages=messages,

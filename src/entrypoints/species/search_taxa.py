@@ -16,8 +16,8 @@ from src.gbif.parser import parse
 from pydantic import BaseModel, Field
 from typing import List, Optional
 
-import instructor
 from dotenv import load_dotenv
+from src.instructor_client import get_client
 
 load_dotenv()
 
@@ -343,10 +343,7 @@ async def __find_best_match(
     species_matches: List[SpeciesMatch], user_query: str
 ) -> SpeciesMatch:
 
-    client = instructor.from_provider(
-        "openai/gpt-4o",
-        async_client=True,
-    )
+    client = await get_client()
 
     response = await client.chat.completions.create(
         messages=[

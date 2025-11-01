@@ -4,12 +4,12 @@ from ichatbio.agent_response import IChatBioAgentProcess
 
 from src.utils import IdentifiedOrganism
 from src.models.entrypoints import GBIFSpeciesNameMatchParams
+from src.instructor_client import get_client
 
 """
 Module for resolving taxonomic names to GBIF keys automatically.
 """
 
-import instructor
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from typing import Dict, List, Optional, Tuple, Any
@@ -118,10 +118,7 @@ async def extract_taxonomic_names(
 ) -> TaxonomicExtraction:
     await process.log("Diving deeper...")
     try:
-        openai_client = instructor.from_provider(
-            "openai/gpt-4.1",
-            async_client=True,
-        )
+        openai_client = await get_client()
         messages = [
             {"role": "system", "content": taxonomic_extraction_prompt},
             {

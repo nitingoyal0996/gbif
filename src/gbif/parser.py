@@ -1,6 +1,5 @@
 import datetime
 import json
-import instructor
 
 from pydantic import BaseModel, Field, create_model
 from instructor.exceptions import InstructorRetryException
@@ -10,6 +9,7 @@ from typing import Type, Optional
 from dotenv import load_dotenv
 from src.utils import UserRequestExpansion, IdentifiedOrganism
 from src.models.location import ResolvedLocation, GadmMatchType
+from src.instructor_client import get_client
 
 load_dotenv()
 
@@ -156,10 +156,7 @@ async def parse(
 ) -> Type[BaseModel]:
     response_model = create_response_model(parameters_model)
 
-    client = instructor.from_provider(
-        "openai/gpt-4.1",
-        async_client=True,
-    )
+    client = await get_client()
 
     messages = [
         {
