@@ -1,0 +1,220 @@
+"""
+Registry Parameters Models
+
+This module contains parameter models for registry-related API endpoints based on the GBIF OpenAPI specification.
+"""
+
+from typing import Optional, List
+from uuid import UUID
+from pydantic import Field
+
+from .common import PaginationParams
+from src.enums.common import CountryEnum, GbifRegionEnum
+from src.enums.registry import (
+    MasterSourceTypeEnum,
+    MasterSourceEnum,
+    IdentifierTypeEnum,
+    SortByEnum,
+    SortOrderEnum,
+)
+
+
+class GBIFGrSciCollInstitutionSearchParams(PaginationParams):
+    """
+    Parameters for GBIF GrSciColl institution search endpoint (/grscicoll/institution/search).
+    
+    This endpoint searches for institutions in the Global Registry of Scientific Collections (GRSciColl).
+    """
+
+    # Full text search
+    q: Optional[str] = Field(
+        None,
+        description="Simple full text search parameter. The value for this parameter can be a simple word or a phrase. Wildcards are not supported.",
+        examples=["Smithsonian", "Natural History Museum", "botanical"],
+    )
+
+    hl: Optional[bool] = Field(
+        None,
+        description="Set `hl=true` to highlight terms matching the query when in fulltext search fields. The highlight will be an emphasis tag of class `gbifHl`.",
+        examples=[True, False],
+    )
+
+    fuzzyName: Optional[str] = Field(
+        None,
+        description="It searches by name fuzzily so the parameter doesn't have to be the exact name.",
+        examples=["Smithsonian", "Natural History"],
+    )
+
+    # Institution identifiers
+    code: Optional[str] = Field(
+        None,
+        description="Code of a GrSciColl institution or collection.",
+        examples=["USNM", "NHM"],
+    )
+
+    name: Optional[str] = Field(
+        None,
+        description="Name of a GrSciColl institution or collection.",
+        examples=["Smithsonian Institution", "Natural History Museum"],
+    )
+
+    alternativeCode: Optional[str] = Field(
+        None,
+        description="Alternative code of a GrSciColl institution or collection.",
+    )
+
+    # Institution classification
+    type: Optional[List[str]] = Field(
+        None,
+        description="Type of a GrSciColl institution. Accepts multiple values, for example `type=Museum&type=BotanicalGarden`.",
+        examples=[["Museum", "BotanicalGarden"]],
+    )
+
+    institutionalGovernance: Optional[List[str]] = Field(
+        None,
+        description="Institutional governance of a GrSciColl institution. Accepts multiple values, for example `InstitutionalGovernance=NonProfit&InstitutionalGovernance=Local`.",
+        examples=[["NonProfit", "Local"]],
+    )
+
+    discipline: Optional[List[str]] = Field(
+        None,
+        description="Discipline of a GrSciColl institution. Accepts multiple values, for example `discipline=Zoology&discipline=Biological`.",
+        examples=[["Zoology", "Biological"]],
+    )
+
+    # Master source metadata
+    sourceId: Optional[str] = Field(
+        None,
+        description="sourceId of MasterSourceMetadata.",
+    )
+
+    source: Optional[MasterSourceEnum] = Field(
+        None,
+        description="Source attribute of MasterSourceMetadata.",
+    )
+
+    masterSourceType: Optional[MasterSourceTypeEnum] = Field(
+        None,
+        description="The master source type of a GRSciColl institution or collection.",
+    )
+
+    # Identifiers
+    identifierType: Optional[IdentifierTypeEnum] = Field(
+        None,
+        description="An identifier type for the identifier parameter.",
+    )
+
+    identifier: Optional[str] = Field(
+        None,
+        description="An identifier of the type given by the identifierType parameter, for example a DOI or UUID.",
+        examples=["10.1234/example", "fa252605-26f6-426c-9892-94d071c2c77f"],
+    )
+
+    # Location filters
+    country: Optional[List[CountryEnum]] = Field(
+        None,
+        description="Filters by country given as a ISO 639-1 (2 letter) country code.",
+        examples=[[CountryEnum.US, CountryEnum.GB]],
+    )
+
+    gbifRegion: Optional[List[GbifRegionEnum]] = Field(
+        None,
+        description="Filters by a gbif region.",
+        examples=[[GbifRegionEnum.NORTH_AMERICA, GbifRegionEnum.EUROPE]],
+    )
+
+    city: Optional[str] = Field(
+        None,
+        description="Filters by the city of the address. It searches in both the physical and the mailing address.",
+        examples=["Washington", "London", "Paris"],
+    )
+
+    # Contact filters
+    contact: Optional[UUID] = Field(
+        None,
+        description="Filters collections and institutions whose contacts contain the person key specified.",
+        examples=[UUID("fa252605-26f6-426c-9892-94d071c2c77f")],
+    )
+
+    contactUserId: Optional[str] = Field(
+        None,
+        description="Filter by contact user ID.",
+    )
+
+    contactEmail: Optional[str] = Field(
+        None,
+        description="Filter by contact email.",
+        examples=["contact@example.com"],
+    )
+
+    # Machine tags
+    machineTagNamespace: Optional[str] = Field(
+        None,
+        description="Filters for entities with a machine tag in the specified namespace.",
+    )
+
+    machineTagName: Optional[str] = Field(
+        None,
+        description="Filters for entities with a machine tag with the specified name (use in combination with the machineTagNamespace parameter).",
+    )
+
+    machineTagValue: Optional[str] = Field(
+        None,
+        description="Filters for entities with a machine tag with the specified value (use in combination with the machineTagNamespace and machineTagName parameters).",
+    )
+
+    # Status and display
+    active: Optional[bool] = Field(
+        None,
+        description="Active status of a GrSciColl institution or collection.",
+        examples=[True, False],
+    )
+
+    displayOnNHCPortal: Optional[bool] = Field(
+        None,
+        description="Flag to show this record in the NHC portal.",
+        examples=[True, False],
+    )
+
+    # Counts and ranges (string format to support ranges and wildcards)
+    numberSpecimens: Optional[str] = Field(
+        None,
+        description="Number of specimens. It supports ranges and a `*` can be used as a wildcard.",
+        examples=["1000-5000", "10000*"],
+    )
+
+    occurrenceCount: Optional[str] = Field(
+        None,
+        description="Count of occurrences linked. It supports ranges and a `*` can be used as a wildcard.",
+        examples=["1000-5000", "10000*"],
+    )
+
+    typeSpecimenCount: Optional[str] = Field(
+        None,
+        description="Count of type specimens linked. It supports ranges and a `*` can be used as a wildcard.",
+        examples=["100-500", "1000*"],
+    )
+
+    # Relationships
+    institutionKey: Optional[List[UUID]] = Field(
+        None,
+        description="Keys of institutions to filter by.",
+        examples=[[UUID("fa252605-26f6-426c-9892-94d071c2c77f")]],
+    )
+
+    replacedBy: Optional[UUID] = Field(
+        None,
+        description="Key of the entity that replaced another entity.",
+        examples=[UUID("fa252605-26f6-426c-9892-94d071c2c77f")],
+    )
+
+    # Sorting
+    sortBy: Optional[SortByEnum] = Field(
+        None,
+        description="Field to sort the results by. It only supports the fields contained in the enum.",
+    )
+
+    sortOrder: Optional[SortOrderEnum] = Field(
+        None,
+        description="Sort order to use with the sortBy parameter.",
+    )

@@ -5,6 +5,7 @@ from . import (
     species,
     entrypoints,
     responses,
+    registry,
 )
 
 __all__ = [
@@ -14,4 +15,5 @@ __all__ = [
     "species",
     "entrypoints",
     "responses",
+    "registry",
 ]
