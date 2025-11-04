@@ -1,6 +1,7 @@
 from typing import Optional, List, Tuple, Dict
 from enum import Enum
 from pydantic import BaseModel, Field
+from src.enums.common import CountryEnum
 
 
 class Location(BaseModel):
@@ -24,8 +25,10 @@ class Location(BaseModel):
     country: Optional[str] = Field(
         None, description="Country name (e.g., 'United States', 'India', 'Brazil')"
     )
-    country_iso: Optional[str] = Field(
-        None, description="ISO 3166-1 alpha-2 country code (e.g., 'US', 'IN', 'BR')"
+    country_iso: Optional[CountryEnum] = Field(
+        None,
+        description="ISO 3166-1 alpha-2 country code (e.g., 'US', 'IN', 'BR')",
+        examples=[CountryEnum.US, CountryEnum.IN, CountryEnum.BR],
     )
     state: Optional[str] = Field(
         None,

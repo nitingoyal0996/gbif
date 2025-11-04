@@ -10,6 +10,7 @@ from src.enums.common import (
     LicenseEnum,
     GbifRegionEnum,
     MediaObjectTypeEnum,
+    CountryEnum,
 )
 from src.enums.occurrences import (
     BasisOfRecordEnum,
@@ -170,10 +171,14 @@ class GeographicFilters(GadmFilters):
         ],
     )
 
-    country: Optional[List[str]] = Field(
+    country: Optional[List[CountryEnum]] = Field(
         None,
         description="The 2-letter country code (as per ISO-3166-1) of the country in which the occurrence was recorded.",
-        examples=[["US"], ["GB", "FR", "DE"], ["AF", "ZA", "KE"]],
+        examples=[
+            [CountryEnum.US],
+            [CountryEnum.GB, CountryEnum.FR, CountryEnum.DE],
+            [CountryEnum.AF, CountryEnum.ZA, CountryEnum.KE],
+        ],
     )
 
     stateProvince: Optional[List[str]] = Field(
@@ -583,10 +588,14 @@ class DatasetCollectionFilters(BaseModel):
         examples=[["e2e717bf-551a-4917-bdc9-4fa0f342c530"]],
     )
 
-    publishingCountry: Optional[List[str]] = Field(
+    publishingCountry: Optional[List[CountryEnum]] = Field(
         None,
         description="The 2-letter country code (as per ISO-3166-1) of the owning organization's country.",
-        examples=[["AD"], ["US", "GB"]],
+        examples=[
+            [CountryEnum.AD],
+            [CountryEnum.US, CountryEnum.GB],
+            [CountryEnum.AF, CountryEnum.ZA, CountryEnum.KE],
+        ],
     )
 
     publishedByGbifRegion: Optional[List[GbifRegionEnum]] = Field(

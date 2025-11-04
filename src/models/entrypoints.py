@@ -7,6 +7,7 @@ from src import models
 from src.enums.common import (
     ContinentEnum,
     LicenseEnum,
+    CountryEnum,
 )
 from src.enums.species import (
     TaxonomicRankEnum,
@@ -279,16 +280,16 @@ class GBIFDatasetSearchParams(ProductionBaseModel):
         examples=[1880, 1960, 2000, 2020],
     )
 
-    publishingCountry: Optional[str] = Field(
+    publishingCountry: Optional[CountryEnum] = Field(
         None,
         description="Filters datasets by their owning organization's country given as a ISO 639-1 (2 letter) country code.",
-        examples=["US", "GB", "DE", "FR"],
+        examples=[CountryEnum.US, CountryEnum.GB, CountryEnum.DE, CountryEnum.FR],
     )
 
-    hostingCountry: Optional[str] = Field(
+    hostingCountry: Optional[CountryEnum] = Field(
         None,
         description="Filters datasets by their hosting organization's country given as a ISO 639-1 (2 letter) country code.",
-        examples=["US", "GB", "DE", "FR"],
+        examples=[CountryEnum.US, CountryEnum.GB, CountryEnum.DE, CountryEnum.FR],
     )
 
     continent: Optional[ContinentEnum] = Field(
