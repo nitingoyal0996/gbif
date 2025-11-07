@@ -68,15 +68,30 @@ async def run(context: ResponseContext, request: str):
         if expansion_response.entities:
             for entity in expansion_response.entities:
                 if entity.type is NamedEntityType.PERSON:
-                    result = normalize_name(entity.value)
-                    await process.log(
-                        f"Bionomia search result for {entity.value}",
-                        data=result,
-                    )
-                    if result.get("status") == "found":
-                        entity.alternate_names = result.get("all_names", []) or []
-                    else:
+                    if entity.strict:
+                        await process.log(
+                            "User requested a strict match for a person name, skipping Bionomia lookup."
+                        )
                         continue
+                    else:
+                        result = await normalize_name(process, entity.value)
+                        # Check if result is a successful match (no status field means success)
+                        if result.get("status") is None:
+                            # Collect all name variants from the record
+                            alternate_names = []
+                            if result.get("fullname"):
+                                alternate_names.append(result["fullname"])
+                            if result.get("fullname_reverse"):
+                                alternate_names.append(result["fullname_reverse"])
+                            if result.get("label") and result["label"] != result.get(
+                                "fullname"
+                            ):
+                                alternate_names.append(result["label"])
+                            if result.get("other_names"):
+                                alternate_names.extend(result["other_names"])
+                            entity.alternate_names = alternate_names
+                        else:
+                            continue
         expandedRequest = f"User request: {request} Identified organisms in the request: {json.dumps(serialize_organisms(expansion_response.organisms))} Identified locations in the request: {json.dumps(serialize_locations(enrich_locations))} Identified entities in the request: {json.dumps(serialize_entities(expansion_response.entities), indent=2)}"
         await process.log(
             f"Expanded request",

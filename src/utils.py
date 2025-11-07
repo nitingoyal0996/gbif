@@ -1,9 +1,10 @@
 from pydantic import BaseModel, Field, model_validator, ConfigDict
-from typing import Optional
+from typing import Optional, Union
 import dataclasses
 import json
 from src.log import logger
 from src.models.location import Location
+from src.models.bionomia import BionomiaNameRecord, NameMatchResult
 from src.instructor_client import get_client
 from enum import Enum
 
@@ -11,6 +12,9 @@ from enum import Enum
 class NamedEntityType(Enum):
     PERSON = "person"
     PUBLISHING_ORGANIZATION = "publishing_organization"
+    INSTITUTION = "institution"
+    MUSEUM = "museum"
+    COLLECTION = "collection"
     OTHER = "other"
 
 
@@ -22,6 +26,10 @@ class NamedEntity(BaseModel):
     model_config = ConfigDict(extra="allow")
     type: NamedEntityType
     value: str = Field(description="The value of the entity")
+    strict: bool = Field(
+        description="True if the entity is a strict match; A strict match is when the value is enclosed in quotes like '\"John Doe\"'. in the user request.",
+        default=False,
+    )
     type_if_other: str = Field(description="The type of the entity if it is OTHER")
 
     @model_validator(mode="after")
@@ -212,3 +220,121 @@ async def _preprocess_user_request(user_request: str):
         f"Identified organisms and locations: {response.model_dump(exclude_none=True)}"
     )
     return response
+
+
+class MatchSelection(BaseModel):
+    """A selected match identified by its match_id"""
+
+    match_id: str = Field(
+        description="The match_id of the selected match from the provided matches"
+    )
+    match_reason: str = Field(
+        description="Reason for the match (e.g., 'exact abbreviation match', 'spousal reference', 'name variant')"
+    )
+    score: float = Field(description="Confidence score between 0 and 1")
+
+
+class NameMatchSelectionResponse(BaseModel):
+    """LLM response containing selected match IDs"""
+
+    monologue: str = Field(description="A monologue to explain the match reason")
+    selected_matches: list[MatchSelection] = Field(
+        default_factory=list,
+        description="List of selected match_ids with match_reason and score. Return only the best few matches (no more than 5), ordered by relevance.",
+    )
+
+
+prompt = """
+You are a scientific data matcher for biographical and taxonomic records.
+
+When given a person's name query (e.g. "H. H. Smith") and a list of Bionomia API matches,
+you must:
+1. Analyze which matches are most relevant to the query
+2. Select the match_ids of the most relevant matches
+3. For each selected match, provide a match_reason and confidence score
+
+CRITICAL: You MUST populate selected_matches with match_ids from the provided matches.
+Do not leave selected_matches empty. Return the match_id (as a string) for each relevant match.
+
+For each match in selected_matches:
+- Use the exact match_id from the provided matches list
+- Include a "match_reason" explaining why this match is relevant (e.g., "exact abbreviation match", "spousal reference", "name variant")
+- Include a confidence "score" between 0 and 1 based on how well it matches the query
+- Return only the best few matches (no more than 5), ordered by relevance (highest score first)
+"""
+
+
+async def find_best_name_match(
+    name: str, bionomia_matches: list[Union[BionomiaNameRecord, dict]]
+) -> NameMatchResult:
+    # Convert all matches to BionomiaNameRecord objects and assign match_ids
+    matches_with_ids = []
+    match_id_to_match = {}
+
+    for idx, match in enumerate(bionomia_matches):
+        # Convert to BionomiaNameRecord if it's a dict
+        if isinstance(match, dict):
+            match_record = BionomiaNameRecord(**match)
+        else:
+            match_record = match
+
+        # Use existing 'id' field if available, otherwise use index-based ID
+        match_id = str(
+            match_record.id if match_record.id is not None else f"match_{idx}"
+        )
+
+        # Create a dict copy with match_id for LLM
+        match_dict = match_record.model_dump(exclude_none=True)
+        match_dict["match_id"] = match_id
+        matches_with_ids.append(match_dict)
+        match_id_to_match[match_id] = match_record
+
+    messages = [
+        {"role": "system", "content": prompt},
+        {
+            "role": "user",
+            "content": f"Bionomia API matches (each has a 'match_id' field): {json.dumps(matches_with_ids, indent=2)}",
+        },
+        {"role": "user", "content": f"Find the closest match for the name: {name}"},
+    ]
+
+    client = await get_client()
+
+    selection_response = await client.chat.completions.create(
+        messages=messages,
+        response_model=NameMatchSelectionResponse,
+        max_retries=3,
+    )
+
+    # Validate IDs and add match_reason and score to original match objects
+    top_matches = []
+    for selection in selection_response.selected_matches:
+        match_id = selection.match_id
+        if match_id not in match_id_to_match:
+            logger.warning(
+                f"Invalid match_id '{match_id}' returned by LLM for name '{name}'. Skipping."
+            )
+            continue
+
+        match_record = match_id_to_match[match_id]
+
+        # Add match_reason and LLM confidence score to the record
+        match_dict = match_record.model_dump(exclude_none=True)
+        match_dict["match_reason"] = selection.match_reason
+        match_dict["match_confidence"] = selection.score  # LLM confidence score
+
+        top_matches.append(match_dict)
+
+    # Sort by llm match_confidence (highest first)
+    top_matches.sort(key=lambda x: x.get("match_confidence", 0), reverse=True)
+
+    logger.info(
+        f"Matched persons for '{name}': monologue='{selection_response.monologue}', matches={top_matches}"
+    )
+
+    result = {
+        "monologue": selection_response.monologue,
+        "matches": top_matches,
+    }
+
+    return result

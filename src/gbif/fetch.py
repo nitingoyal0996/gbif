@@ -23,8 +23,12 @@ def execute_sync_request(url: str, max_retries: int = 3) -> Dict[str, Any]:
 
             response.raise_for_status()
             result = response.json()
-            result["status_code"] = response.status_code
-            return result
+            # Handle both dict and list responses
+            if isinstance(result, dict):
+                result["status_code"] = response.status_code
+                return result
+            else:
+                return {"data": result, "status_code": response.status_code}
 
         except requests.exceptions.HTTPError as e:
             if attempt == max_retries or (e.response and e.response.status_code < 500):
