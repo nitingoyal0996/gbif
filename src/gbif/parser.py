@@ -85,14 +85,15 @@ def get_system_prompt(entrypoint_id: str):
     examples = []
     with open("src/resources/fewshot.json", "r") as f:
         fewshot = json.load(f)
-        for idx, example in enumerate(fewshot[entrypoint_id]):
-            e = f"""
-            ### Example {idx + 1}:
-            ```json
-            {json.dumps(example, indent=2)}
-            ```
-            """
-            examples.append(e)
+        if entrypoint_id in fewshot.keys():
+            for idx, example in enumerate(fewshot[entrypoint_id]):
+                e = f"""
+                ### Example {idx + 1}:
+                ```json
+                {json.dumps(example, indent=2)}
+                ```
+                """
+                examples.append(e)
 
     if examples:
         prompt += "\n\n## Examples: \n\n" + "\n".join(examples)

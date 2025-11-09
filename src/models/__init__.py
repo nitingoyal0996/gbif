@@ -7,6 +7,7 @@ from . import (
     responses,
     registry,
     bionomia,
+    grscicoll,
 )
 
 __all__ = [
@@ -18,4 +19,5 @@ __all__ = [
     "responses",
     "registry",
     "bionomia",
+    "grscicoll",
 ]

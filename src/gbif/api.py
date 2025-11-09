@@ -4,6 +4,7 @@ GBIF API URL Builder Module
 
 from typing import Dict, Any
 from urllib.parse import urlencode
+from uuid import UUID
 
 from src.models.entrypoints import (
     GBIFOccurrenceSearchParams,
@@ -15,6 +16,7 @@ from src.models.entrypoints import (
     GBIFOccurrenceByIdParams,
     GBIFDatasetSearchParams,
 )
+from src.models.registry import GBIFGrSciCollInstitutionSearchParams
 
 
 class GbifApi:
@@ -35,6 +37,8 @@ class GbifApi:
                 for item in value:
                     if hasattr(item, "value"):
                         processed_values.append(item.value)
+                    elif isinstance(item, UUID):
+                        processed_values.append(str(item))
                     elif isinstance(item, bool):
                         processed_values.append(str(item).lower())
                     else:
@@ -42,6 +46,8 @@ class GbifApi:
                 api_params[field_name] = processed_values
             elif hasattr(value, "value"):
                 api_params[field_name] = value.value
+            elif isinstance(value, UUID):
+                api_params[field_name] = str(value)
             elif isinstance(value, bool):
                 api_params[field_name] = str(value).lower()
             else:
@@ -111,6 +117,13 @@ class GbifApi:
         api_params = self._convert_to_api_params(params)
         query_string = urlencode(api_params, doseq=True)
         return f"{self.base_url}/dataset/search?{query_string}"
+
+    def build_grscicoll_institution_search_url(
+        self, params: GBIFGrSciCollInstitutionSearchParams
+    ) -> str:
+        api_params = self._convert_to_api_params(params)
+        query_string = urlencode(api_params, doseq=True)
+        return f"{self.base_url}/grscicoll/institution/search?{query_string}"
 
     def build_portal_url(self, api_url: str) -> str:
         """Convert an API URL to its corresponding portal URL by removing facet parameters."""

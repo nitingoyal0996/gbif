@@ -223,8 +223,8 @@ async def resolve_names_to_taxonkeys(
     taxon_keys = []
 
     for organism in organisms:
-        await process.log(f"Resolving organism: {organism}")
         data = organism.model_dump(exclude_none=True, mode="json")
+        await process.log(f"Resolving organism", data=data)
         result = None
         url = None
         name = data.get("scientific_name", None)
@@ -239,7 +239,7 @@ async def resolve_names_to_taxonkeys(
                 "genus": "genus",
                 "species": "scientificName",
                 "order": "order",
-                "class": "class",
+                "class": "taxonomic_class",
                 "phylum": "phylum",
                 "kingdom": "kingdom",
             }
@@ -247,6 +247,10 @@ async def resolve_names_to_taxonkeys(
             rank_field = (
                 rank_param_map.get(rank.lower()) if isinstance(rank, str) else None
             )
+            result = None
+            url = None
+
+            # Try with rank-specific parameter if available
             if rank_field:
                 params_dict[rank_field] = name
                 params = GBIFSpeciesNameMatchParams(**params_dict)
@@ -256,31 +260,41 @@ async def resolve_names_to_taxonkeys(
                     data={"url": url},
                 )
                 result = await execute_request(url)
-            elif not rank_field or not (
+
+            # If no match found with rank-specific parameter, try with scientificName
+            if not result or not (
                 result.get("usage") and result.get("usage", {}).get("key")
             ):
                 params = GBIFSpeciesNameMatchParams(scientificName=name)
                 url = api.build_species_match_url(params)
                 await process.log(
-                    f"Did not find a match for {name} with rank {rank_field}, attempting to resolve with scientificName",
+                    f"Could not resolve to taxon key for {name} with rank {rank_field}, attempting to resolve with scientificName",
                     data={"url": url},
                 )
                 result = await execute_request(url)
-            elif not (result.get("usage") and result.get("usage", {}).get("key")):
+
+            # If still no match, try with verbose=True to get alternatives
+            if not result or not (
+                result.get("usage") and result.get("usage", {}).get("key")
+            ):
                 params = GBIFSpeciesNameMatchParams(scientificName=name, verbose=True)
                 url = api.build_species_match_url(params)
                 await process.log(
-                    f"No match found for '{name}', trying alternate names with verbose=rue",
+                    f"Could not resolve to taxon key for '{name}', trying alternate names with `verbose=true`",
                     data={"url": url},
                 )
                 data = await execute_request(url)
-                alternatives = data.get("alternatives", [])
+                await process.log("Alternate names data:", data)
+                alternatives = data.get("diagnostics", {}).get("alternatives", [])
                 if alternatives:
                     await process.log(
                         f"Found {len(alternatives)} alternatives for '{name}'"
                     )
                     if len(alternatives) > 1:
-                        await process.log(f"Using first alternative for '{name}'")
+                        await process.log(
+                            f"Using first alternative for '{name}'",
+                            data={"alternatives": alternatives[0]},
+                        )
                         result = alternatives[0]
                     else:
                         await process.log(f"Using only alternative for '{name}'")

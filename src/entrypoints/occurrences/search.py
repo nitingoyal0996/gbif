@@ -30,6 +30,7 @@ from src.gadm.gadm import (
     serialize_locations,
 )
 from src.bionomia import normalize_name
+from src.grscicoll import normalize_institution
 
 
 description = """
@@ -92,6 +93,33 @@ async def run(context: ResponseContext, request: str):
                             entity.alternate_names = alternate_names
                         else:
                             continue
+                elif entity.type in (
+                    NamedEntityType.INSTITUTION,
+                    NamedEntityType.MUSEUM,
+                    NamedEntityType.COLLECTION,
+                ):
+                    institution = await normalize_institution(process, entity.value)
+                    if institution:
+                        await process.log(
+                            f"GrSciColl search result for {entity.value}",
+                            data=institution.model_dump(exclude_none=True),
+                        )
+                        # Expand entity with institution code and key
+                        if institution.code:
+                            entity.institution_code = institution.code
+                            await process.log(
+                                f"Added institution_code: {institution.code}"
+                            )
+                        if institution.key:
+                            entity.institution_key = institution.key
+                            await process.log(
+                                f"Added institution_key: {institution.key}"
+                            )
+                    else:
+                        await process.log(
+                            f"No GrSciColl match found for '{entity.value}', will use name as-is"
+                        )
+                        # If not found, entity.value remains as the original institution name (use as-is)
         expandedRequest = f"User request: {request} Identified organisms in the request: {json.dumps(serialize_organisms(expansion_response.organisms))} Identified locations in the request: {json.dumps(serialize_locations(enrich_locations))} Identified entities in the request: {json.dumps(serialize_entities(expansion_response.entities), indent=2)}"
         await process.log(
             f"Expanded request",

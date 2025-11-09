@@ -9,6 +9,7 @@ from src.models.entrypoints import (
     GBIFOccurrenceFacetsParams,
     GBIFSpeciesFacetsParams,
 )
+from src.models.registry import GBIFGrSciCollInstitutionSearchParams
 
 class RequestValidationMixin(BaseModel):
     """
@@ -163,4 +164,14 @@ class DatasetSearchParamsValidator(RequestValidationMixin, GBIFDatasetSearchPara
         "endorsingNodeKey": "key or ID",
         "installationKey": "key or ID",
         "contactUserId": "key or ID",
+    }
+
+
+class GrSciCollInstitutionSearchParamsValidator(
+    RequestValidationMixin, GBIFGrSciCollInstitutionSearchParams
+):
+    VALIDATION_FIELDS: ClassVar[dict[str, str]] = {
+        "contact": "key or ID",
+        "institutionKey": "key or ID",
+        "replacedBy": "key or ID",
     }
