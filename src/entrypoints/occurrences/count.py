@@ -92,10 +92,6 @@ async def run(context: ResponseContext, request: str):
             for entity in expansion_response.entities:
                 if entity.type is NamedEntityType.PERSON:
                     result = await normalize_name(process, entity.value)
-                    await process.log(
-                        f"Bionomia search result for {entity.value}",
-                        data=result,
-                    )
                     # Check if result is a successful match (no status field means success)
                     if result.get("status") is None:
                         # Collect all name variants from the record
