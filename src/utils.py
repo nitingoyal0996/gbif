@@ -91,7 +91,7 @@ class UserRequestExpansion(BaseModel):
 
 def serialize_for_log(obj):
     if hasattr(obj, "model_dump"):
-        return obj.model_dump(exclude_defaults=True)
+        return obj.model_dump(exclude_defaults=True, mode="json")
     if dataclasses.is_dataclass(obj):
         return dataclasses.asdict(obj)
     return str(obj)

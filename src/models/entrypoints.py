@@ -532,6 +532,7 @@ class GBIFSpeciesNameMatchParams(ProductionBaseModel):
 
     taxonomic_class: Optional[str] = Field(
         None,
+        serialization_alias="class",
         description="The class to match.",
         examples=["Panthera onca", "jaguar", "Quercus robur", "oak tree"],
     )
