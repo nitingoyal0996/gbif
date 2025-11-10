@@ -284,21 +284,49 @@ async def resolve_names_to_taxonkeys(
                     data={"url": url},
                 )
                 data = await execute_request(url)
-                await process.log("Alternate names data:", data)
                 alternatives = data.get("diagnostics", {}).get("alternatives", [])
                 if alternatives:
-                    await process.log(
-                        f"Found {len(alternatives)} alternatives for '{name}'"
-                    )
-                    if len(alternatives) > 1:
-                        await process.log(
-                            f"Using first alternative for '{name}'",
-                            data={"alternatives": alternatives[0]},
+                    # Format alternatives list
+                    first_5 = alternatives[:5]
+                    alternatives_text = f"Found {len(alternatives)} alternatives. Here are the first {len(first_5)}:\n\n"
+
+                    for alt in first_5:
+                        usage = alt.get("usage", {})
+                        rank = usage.get("rank", "Unknown")
+                        scientific_name = usage.get(
+                            "name", usage.get("scientificName", "Unknown")
                         )
-                        result = alternatives[0]
-                    else:
-                        await process.log(f"Using only alternative for '{name}'")
-                        result = alternatives[0]
+
+                        # Extract classification hierarchy
+                        classification = alt.get("classification", [])
+                        classification_names = [
+                            item.get("name", "")
+                            for item in classification
+                            if item.get("name")
+                        ]
+                        classification_str = (
+                            " | ".join(classification_names)
+                            if classification_names
+                            else ""
+                        )
+
+                        alternatives_text += f'- {rank} "{scientific_name}"'
+                        if classification_str:
+                            alternatives_text += (
+                                f" with classification {classification_str}"
+                            )
+                        alternatives_text += "\n"
+
+                    await process.log(alternatives_text)
+
+                    # Use first alternative
+                    first_alt = alternatives[0]
+                    first_usage = first_alt.get("usage", {})
+                    first_scientific_name = first_usage.get(
+                        "name", first_usage.get("scientificName", "Unknown")
+                    )
+                    await process.log(f'Assuming option 1: "{first_scientific_name}"')
+                    result = first_alt
 
             # generate artifact for the response
             if result.get("usage") and result.get("usage", {}).get("key"):
